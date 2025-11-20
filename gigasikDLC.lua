@@ -1,12 +1,302 @@
+-- Premium Menu with Crosshair & All Features
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
+local Workspace = game:GetService("Workspace")
 
 local player = Players.LocalPlayer
 local isMobile = UserInputService.TouchEnabled
 
+-- Settings
+local Settings = {
+    Menu = {Key = Enum.KeyCode.Y, Visible = false},
+    BunnyHop = {Enabled = false, Speed = 50},
+    Hitbox = {Enabled = false, Size = 6},
+    ESP = {Enabled = false},
+    Fly = {Enabled = false, Speed = 50},
+    Speed = {Enabled = false, WalkSpeed = 40},
+    ThirdPerson = {Enabled = false, Distance = 10},
+    Crosshair = {
+        Enabled = false,
+        Type = "Dot",
+        Color = Color3.fromRGB(255, 255, 255),
+        Rainbow = false,
+        Size = 8
+    }
+}
+
+-- Crosshair
+local crosshairGui = Instance.new("ScreenGui")
+crosshairGui.Name = "Crosshair"
+crosshairGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+crosshairGui.ResetOnSpawn = false
+crosshairGui.Parent = CoreGui
+
+local crosshairFrame = Instance.new("Frame")
+crosshairFrame.Size = UDim2.new(0, Settings.Crosshair.Size, 0, Settings.Crosshair.Size)
+crosshairFrame.Position = UDim2.new(0.5, -Settings.Crosshair.Size/2, 0.5, -Settings.Crosshair.Size/2)
+crosshairFrame.BackgroundColor3 = Settings.Crosshair.Color
+crosshairFrame.BorderSizePixel = 0
+crosshairFrame.Visible = false
+crosshairFrame.Parent = crosshairGui
+
+local crosshairCorner = Instance.new("UICorner")
+crosshairCorner.CornerRadius = UDim.new(1, 0)
+crosshairCorner.Parent = crosshairFrame
+
+-- Rainbow crosshair effect
+local rainbowConnection
+if Settings.Crosshair.Rainbow then
+    rainbowConnection = RunService.Heartbeat:Connect(function()
+        local time = tick()
+        local r = math.sin(time * 2) * 0.5 + 0.5
+        local g = math.sin(time * 2 + 2) * 0.5 + 0.5
+        local b = math.sin(time * 2 + 4) * 0.5 + 0.5
+        crosshairFrame.BackgroundColor3 = Color3.new(r, g, b)
+    end)
+end
+
+local function updateCrosshair()
+    crosshairFrame.Visible = Settings.Crosshair.Enabled
+    
+    if Settings.Crosshair.Type == "Dot" then
+        crosshairCorner.CornerRadius = UDim.new(1, 0)
+        crosshairFrame.Size = UDim2.new(0, Settings.Crosshair.Size, 0, Settings.Crosshair.Size)
+    elseif Settings.Crosshair.Type == "Circle" then
+        crosshairCorner.CornerRadius = UDim.new(1, 0)
+        crosshairFrame.Size = UDim2.new(0, Settings.Crosshair.Size, 0, Settings.Crosshair.Size)
+    end
+    
+    if not Settings.Crosshair.Rainbow then
+        crosshairFrame.BackgroundColor3 = Settings.Crosshair.Color
+    end
+    
+    crosshairFrame.Position = UDim2.new(0.5, -Settings.Crosshair.Size/2, 0.5, -Settings.Crosshair.Size/2)
+end
+
+-- Bunny Hop
+local function bunnyHop()
+    if not Settings.BunnyHop.Enabled then return end
+    if not player.Character then return end
+    
+    local humanoid = player.Character:FindFirstChild("Humanoid")
+    local rootPart = player.Character:FindFirstChild("HumanoidRootPart")
+    
+    if humanoid and rootPart and humanoid.FloorMaterial ~= Enum.Material.Air then
+        humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+        
+        local currentVel = rootPart.Velocity
+        local lookVector = rootPart.CFrame.LookVector
+        
+        local newVelocity = Vector3.new(
+            lookVector.X * Settings.BunnyHop.Speed,
+            currentVel.Y,
+            lookVector.Z * Settings.BunnyHop.Speed
+        )
+        
+        rootPart.Velocity = newVelocity
+    end
+end
+
+-- Hitbox
+local function updateHitboxes()
+    for _, otherPlayer in pairs(Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local root = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if root then
+                if Settings.Hitbox.Enabled then
+                    root.Size = Vector3.new(Settings.Hitbox.Size, Settings.Hitbox.Size, Settings.Hitbox.Size)
+                    root.Transparency = 0.5
+                    root.BrickColor = BrickColor.new("Bright red")
+                else
+                    root.Size = Vector3.new(2, 2, 1)
+                    root.Transparency = 1
+                    root.BrickColor = BrickColor.new("Medium stone grey")
+                end
+            end
+        end
+    end
+end
+
+-- ESP
+local espFolder = Instance.new("Folder")
+espFolder.Name = "JOPAMOD_ESP"
+espFolder.Parent = CoreGui
+
+local function createESP(targetPlayer)
+    if not targetPlayer.Character then return end
+    
+    local char = targetPlayer.Character
+    local root = char:FindFirstChild("HumanoidRootPart")
+    local head = char:FindFirstChild("Head")
+    
+    if not root or not head then return end
+
+    local box = Instance.new("BoxHandleAdornment")
+    box.Name = targetPlayer.Name .. "_BOX"
+    box.Adornee = root
+    box.AlwaysOnTop = true
+    box.ZIndex = 1
+    box.Size = root.Size + Vector3.new(0.2, 0.2, 0.2)
+    box.Transparency = 0.3
+    box.Color3 = Color3.fromRGB(255, 50, 50)
+    box.Parent = espFolder
+
+    local tag = Instance.new("BillboardGui")
+    tag.Name = targetPlayer.Name .. "_TAG"
+    tag.Adornee = head
+    tag.Size = UDim2.new(0, 200, 0, 50)
+    tag.StudsOffset = Vector3.new(0, 3, 0)
+    tag.AlwaysOnTop = true
+    tag.Parent = espFolder
+
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.Text = targetPlayer.Name
+    nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    nameLabel.TextStrokeTransparency = 0
+    nameLabel.TextSize = 14
+    nameLabel.Font = Enum.Font.GothamBold
+    nameLabel.Parent = tag
+
+    local distLabel = Instance.new("TextLabel")
+    distLabel.Size = UDim2.new(1, 0, 0.5, 0)
+    distLabel.Position = UDim2.new(0, 0, 0.5, 0)
+    distLabel.BackgroundTransparency = 1
+    distLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
+    distLabel.TextStrokeTransparency = 0
+    distLabel.TextSize = 12
+    distLabel.Font = Enum.Font.Gotham
+    distLabel.Parent = tag
+
+    RunService.Heartbeat:Connect(function()
+        if not char or not root then
+            box:Destroy()
+            tag:Destroy()
+            return
+        end
+        
+        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local dist = (root.Position - player.Character.HumanoidRootPart.Position).Magnitude
+            distLabel.Text = math.floor(dist) .. " studs"
+        end
+    end)
+end
+
+local function toggleESP()
+    for _, child in pairs(espFolder:GetChildren()) do
+        child:Destroy()
+    end
+    
+    if Settings.ESP.Enabled then
+        for _, otherPlayer in pairs(Players:GetPlayers()) do
+            if otherPlayer ~= player then
+                spawn(function()
+                    if otherPlayer.Character then
+                        wait(0.5)
+                        createESP(otherPlayer)
+                    end
+                    otherPlayer.CharacterAdded:Connect(function()
+                        wait(0.5)
+                        createESP(otherPlayer)
+                    end)
+                end)
+            end
+        end
+    end
+end
+
+-- Fly
+local flyBV
+local function updateFly()
+    if not Settings.Fly.Enabled then
+        if flyBV then
+            flyBV:Destroy()
+            flyBV = nil
+        end
+        return
+    end
+    
+    if not player.Character then return end
+    
+    local humanoid = player.Character:FindFirstChild("Humanoid")
+    local rootPart = player.Character:FindFirstChild("HumanoidRootPart")
+    
+    if not rootPart then return end
+    
+    if not flyBV then
+        flyBV = Instance.new("BodyVelocity")
+        flyBV.Velocity = Vector3.new(0, 0, 0)
+        flyBV.MaxForce = Vector3.new(40000, 40000, 40000)
+        flyBV.Parent = rootPart
+        
+        if humanoid then
+            humanoid.PlatformStand = true
+        end
+    end
+    
+    local direction = Vector3.new(0, 0, 0)
+    
+    if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+        direction = direction + Workspace.CurrentCamera.CFrame.LookVector
+    end
+    if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+        direction = direction - Workspace.CurrentCamera.CFrame.LookVector
+    end
+    if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+        direction = direction - Workspace.CurrentCamera.CFrame.RightVector
+    end
+    if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+        direction = direction + Workspace.CurrentCamera.CFrame.RightVector
+    end
+    if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+        direction = direction + Vector3.new(0, 1, 0)
+    end
+    if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
+        direction = direction - Vector3.new(0, 1, 0)
+    end
+    
+    flyBV.Velocity = direction * Settings.Fly.Speed
+end
+
+-- Speed
+local function updateSpeed()
+    if not player.Character then return end
+    
+    local humanoid = player.Character:FindFirstChild("Humanoid")
+    if humanoid then
+        if Settings.Speed.Enabled then
+            humanoid.WalkSpeed = Settings.Speed.WalkSpeed
+        else
+            humanoid.WalkSpeed = 16
+        end
+    end
+end
+
+-- Third Person
+local function toggleThirdPerson()
+    if Settings.ThirdPerson.Enabled then
+        Workspace.CurrentCamera.CameraType = Enum.CameraType.Scriptable
+    else
+        Workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
+    end
+end
+
+local function updateThirdPerson()
+    if not Settings.ThirdPerson.Enabled then return end
+    if not player.Character then return end
+    
+    local root = player.Character:FindFirstChild("HumanoidRootPart")
+    if root then
+        local offset = CFrame.new(Settings.ThirdPerson.Distance, 3, Settings.ThirdPerson.Distance)
+        Workspace.CurrentCamera.CFrame = root.CFrame * offset
+    end
+end
+
+-- Menu Creation
 local function createPremiumMenu()
     if CoreGui:FindFirstChild("PremiumMenu") then
         CoreGui:FindFirstChild("PremiumMenu"):Destroy()
@@ -156,13 +446,13 @@ local function createPremiumMenu()
     content.BorderSizePixel = 0
     content.ScrollBarThickness = 3
     content.ScrollBarImageColor3 = Color3.fromRGB(155, 89, 182)
-    content.CanvasSize = UDim2.new(0, 0, 0, 800)
+    content.CanvasSize = UDim2.new(0, 0, 0, 1000)
     content.Parent = mainFrame
 
     local tabs = {
         {name = "🎮 MAIN", color = Color3.fromRGB(52, 152, 219)},
         {name = "⚙️ SETTINGS", color = Color3.fromRGB(155, 89, 182)},
-        {name = "🔧 CONFIG", color = Color3.fromRGB(46, 204, 113)}
+        {name = "🎯 CROSSHAIR", color = Color3.fromRGB(46, 204, 113)}
     }
 
     local currentTab = "🎮 MAIN"
@@ -200,19 +490,21 @@ local function createPremiumMenu()
     end
 
     local mainFeatures = {
-        {name = "🚀 Fly Hack", desc = "Free movement in air", enabled = false},
-        {name = "🎯 Aimbot", desc = "Auto aim at enemies", enabled = false},
-        {name = "👁️ ESP", desc = "See players through walls", enabled = false},
-        {name = "💨 Speed", desc = "Move faster", enabled = false},
-        {name = "🛡️ Anti-AFK", desc = "Prevent AFK detection", enabled = false},
-        {name = "🐰 Bunny Hop", desc = "Auto jump while moving", enabled = false}
+        {name = "🚀 Fly Hack", desc = "Free movement in air", enabled = false, setting = "Fly"},
+        {name = "🎯 ESP", desc = "See players through walls", enabled = false, setting = "ESP"},
+        {name = "💨 Speed", desc = "Move faster", enabled = false, setting = "Speed"},
+        {name = "🛡️ Anti-AFK", desc = "Prevent AFK detection", enabled = false, setting = "AntiAFK"},
+        {name = "🐰 Bunny Hop", desc = "Auto jump while moving", enabled = false, setting = "BunnyHop"},
+        {name = "🎯 Hitbox", desc = "Expand player hitboxes", enabled = false, setting = "Hitbox"},
+        {name = "📷 3rd Person", desc = "Third person view", enabled = false, setting = "ThirdPerson"}
     }
 
-    local settings = {
-        {name = "Hitbox Size", type = "slider", value = 5, min = 1, max = 10},
-        {name = "Fly Speed", type = "slider", value = 50, min = 10, max = 100},
-        {name = "Speed Value", type = "slider", value = 30, min = 16, max = 100},
-        {name = "ESP Distance", type = "slider", value = 500, min = 100, max = 1000}
+    local crosshairSettings = {
+        {name = "Crosshair Enabled", type = "toggle", setting = "Crosshair", value = "Enabled"},
+        {name = "Crosshair Type", type = "dropdown", options = {"Dot", "Circle"}, setting = "Crosshair", value = "Type"},
+        {name = "Crosshair Color", type = "color", setting = "Crosshair", value = "Color"},
+        {name = "Rainbow Effect", type = "toggle", setting = "Crosshair", value = "Rainbow"},
+        {name = "Crosshair Size", type = "slider", min = 4, max = 20, setting = "Crosshair", value = "Size"}
     }
 
     local function updateContent()
@@ -233,7 +525,7 @@ local function createPremiumMenu()
                 local button = Instance.new("TextButton")
                 button.Size = UDim2.new(1, 0, 0, 60)
                 button.Position = UDim2.new(0, 0, 0, 5)
-                button.BackgroundColor3 = feature.enabled and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(35, 35, 50)
+                button.BackgroundColor3 = Settings[feature.setting].Enabled and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(35, 35, 50)
                 button.BorderSizePixel = 0
                 button.Text = ""
                 button.Parent = buttonContainer
@@ -275,91 +567,63 @@ local function createPremiumMenu()
                 descLabel.Parent = button
 
                 button.MouseButton1Click:Connect(function()
-                    feature.enabled = not feature.enabled
-                    button.BackgroundColor3 = feature.enabled and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(35, 35, 50)
+                    Settings[feature.setting].Enabled = not Settings[feature.setting].Enabled
+                    button.BackgroundColor3 = Settings[feature.setting].Enabled and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(35, 35, 50)
+                    
+                    if feature.setting == "ESP" then
+                        toggleESP()
+                    elseif feature.setting == "Hitbox" then
+                        updateHitboxes()
+                    elseif feature.setting == "ThirdPerson" then
+                        toggleThirdPerson()
+                    end
                 end)
             end
             content.CanvasSize = UDim2.new(0, 0, 0, #mainFeatures * 80)
 
-        elseif currentTab == "⚙️ SETTINGS" then
-            for i, setting in pairs(settings) do
+        elseif currentTab == "🎯 CROSSHAIR" then
+            for i, setting in pairs(crosshairSettings) do
                 local settingContainer = Instance.new("Frame")
-                settingContainer.Size = UDim2.new(1, 0, 0, 80)
-                settingContainer.Position = UDim2.new(0, 0, 0, (i-1) * 90)
+                settingContainer.Size = UDim2.new(1, 0, 0, 60)
+                settingContainer.Position = UDim2.new(0, 0, 0, (i-1) * 70)
                 settingContainer.BackgroundTransparency = 1
                 settingContainer.Parent = content
 
                 local nameLabel = Instance.new("TextLabel")
-                nameLabel.Size = UDim2.new(1, 0, 0, 30)
-                nameLabel.Position = UDim2.new(0, 0, 0, 0)
+                nameLabel.Size = UDim2.new(0.6, 0, 1, 0)
                 nameLabel.BackgroundTransparency = 1
                 nameLabel.Text = setting.name
                 nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-                nameLabel.TextSize = 16
-                nameLabel.Font = Enum.Font.GothamBold
+                nameLabel.TextSize = 14
+                nameLabel.Font = Enum.Font.Gotham
                 nameLabel.TextXAlignment = Enum.TextXAlignment.Left
                 nameLabel.Parent = settingContainer
 
-                local valueLabel = Instance.new("TextLabel")
-                valueLabel.Size = UDim2.new(0, 100, 0, 30)
-                valueLabel.Position = UDim2.new(1, -100, 0, 0)
-                valueLabel.BackgroundTransparency = 1
-                valueLabel.Text = tostring(setting.value)
-                valueLabel.TextColor3 = Color3.fromRGB(52, 152, 219)
-                valueLabel.TextSize = 16
-                valueLabel.Font = Enum.Font.GothamBold
-                valueLabel.TextXAlignment = Enum.TextXAlignment.Right
-                valueLabel.Parent = settingContainer
+                if setting.type == "toggle" then
+                    local toggle = Instance.new("TextButton")
+                    toggle.Size = UDim2.new(0, 80, 0, 30)
+                    toggle.Position = UDim2.new(1, -90, 0.5, -15)
+                    toggle.BackgroundColor3 = Settings[setting.setting][setting.value] and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(231, 76, 60)
+                    toggle.BorderSizePixel = 0
+                    toggle.Text = Settings[setting.setting][setting.value] and "ON" or "OFF"
+                    toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+                    toggle.TextSize = 12
+                    toggle.Font = Enum.Font.GothamBold
+                    toggle.Parent = settingContainer
 
-                local sliderContainer = Instance.new("Frame")
-                sliderContainer.Size = UDim2.new(1, 0, 0, 30)
-                sliderContainer.Position = UDim2.new(0, 0, 0, 40)
-                sliderContainer.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
-                sliderContainer.BorderSizePixel = 0
-                sliderContainer.Parent = settingContainer
+                    local toggleCorner = Instance.new("UICorner")
+                    toggleCorner.CornerRadius = UDim.new(0.3, 0)
+                    toggleCorner.Parent = toggle
 
-                local sliderCorner = Instance.new("UICorner")
-                sliderCorner.CornerRadius = UDim.new(0.1, 0)
-                sliderCorner.Parent = sliderContainer
-
-                local sliderFill = Instance.new("Frame")
-                sliderFill.Size = UDim2.new((setting.value - setting.min) / (setting.max - setting.min), 0, 1, 0)
-                sliderFill.BackgroundColor3 = Color3.fromRGB(52, 152, 219)
-                sliderFill.BorderSizePixel = 0
-                sliderFill.Parent = sliderContainer
-
-                local fillCorner = Instance.new("UICorner")
-                fillCorner.CornerRadius = UDim.new(0.1, 0)
-                fillCorner.Parent = sliderFill
-
-                local function updateSlider(value)
-                    local newValue = math.clamp(value, setting.min, setting.max)
-                    setting.value = newValue
-                    valueLabel.Text = tostring(newValue)
-                    sliderFill.Size = UDim2.new((newValue - setting.min) / (setting.max - setting.min), 0, 1, 0)
+                    toggle.MouseButton1Click:Connect(function()
+                        Settings[setting.setting][setting.value] = not Settings[setting.setting][setting.value]
+                        toggle.BackgroundColor3 = Settings[setting.setting][setting.value] and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(231, 76, 60)
+                        toggle.Text = Settings[setting.setting][setting.value] and "ON" or "OFF"
+                        updateCrosshair()
+                    end)
                 end
-
-                sliderContainer.InputBegan:Connect(function(input)
-                    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                        local connection
-                        connection = RunService.Heartbeat:Connect(function()
-                            local mousePos = UserInputService:GetMouseLocation()
-                            local sliderPos = sliderContainer.AbsolutePosition
-                            local sliderSize = sliderContainer.AbsoluteSize
-                            local relativeX = math.clamp((mousePos.X - sliderPos.X) / sliderSize.X, 0, 1)
-                            local newValue = math.floor(setting.min + relativeX * (setting.max - setting.min))
-                            updateSlider(newValue)
-                        end)
-                        
-                        UserInputService.InputEnded:Connect(function(input)
-                            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                                connection:Disconnect()
-                            end
-                        end)
-                    end
-                end)
             end
-            content.CanvasSize = UDim2.new(0, 0, 0, #settings * 90)
+            content.CanvasSize = UDim2.new(0, 0, 0, #crosshairSettings * 70)
         end
     end
 
@@ -449,50 +713,57 @@ local function createPremiumMenu()
     }
 end
 
+-- Initialize everything
 local menu = createPremiumMenu()
 
-if isMobile then
-    local mobileButton = CoreGui.PremiumMenu:FindFirstChildWhichIsA("ImageButton")
-    if mobileButton then
-        local dragging = false
-        local dragInput, dragStart, startPos
-        
-        mobileButton.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.Touch then
-                dragging = true
-                dragStart = input.Position
-                startPos = mobileButton.Position
-                
-                TweenService:Create(mobileButton, TweenInfo.new(0.2), {Size = UDim2.new(0, 60, 0, 60)}):Play()
-                
-                input.Changed:Connect(function()
-                    if input.UserInputState == Enum.UserInputState.End then
-                        dragging = false
-                        TweenService:Create(mobileButton, TweenInfo.new(0.2), {Size = UDim2.new(0, 70, 0, 70)}):Play()
-                    end
-                end)
-            end
-        end)
-        
-        mobileButton.InputChanged:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.Touch then
-                dragInput = input
-            end
-        end)
-        
-        UserInputService.InputChanged:Connect(function(input)
-            if dragging and input == dragInput then
-                local delta = input.Position - dragStart
-                mobileButton.Position = UDim2.new(
-                    startPos.X.Scale, 
-                    startPos.X.Offset + delta.X,
-                    startPos.Y.Scale, 
-                    startPos.Y.Offset + delta.Y
-                )
-            end
+-- Main game loop
+RunService.Heartbeat:Connect(function()
+    pcall(function()
+        bunnyHop()
+        updateFly()
+        updateSpeed()
+        updateThirdPerson()
+        updateCrosshair()
+    end)
+end)
+
+-- Player handling
+Players.PlayerAdded:Connect(function(newPlayer)
+    if Settings.ESP.Enabled then
+        spawn(function()
+            newPlayer.CharacterAdded:Connect(function()
+                wait(1)
+                createESP(newPlayer)
+            end)
         end)
     end
-end
+end)
 
-print("✨ Fuesos Optimizing Version Loaded!")
+player.CharacterAdded:Connect(function()
+    if Settings.Hitbox.Enabled then
+        wait(1)
+        updateHitboxes()
+    end
+    if Settings.ESP.Enabled then
+        wait(1)
+        toggleESP()
+    end
+    if flyBV then
+        flyBV:Destroy()
+        flyBV = nil
+    end
+end)
+
+-- Initial setup
+delay(2, function()
+    if Settings.ESP.Enabled then
+        toggleESP()
+    end
+    if Settings.Hitbox.Enabled then
+        updateHitboxes()
+    end
+    updateCrosshair()
+end)
+
+print("✨ FUESOS Optimazing Loaded!")
 print(isMobile and "DIEGO SOLO")
