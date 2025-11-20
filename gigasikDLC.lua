@@ -1,4 +1,4 @@
--- Premium Mobile Menu - Compact Version
+-- FUES v3.0
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
@@ -9,7 +9,6 @@ local Workspace = game:GetService("Workspace")
 local player = Players.LocalPlayer
 local isMobile = UserInputService.TouchEnabled
 
--- Settings
 local Settings = {
     Menu = {Visible = false},
     BunnyHop = {Enabled = false, Speed = 50},
@@ -23,11 +22,12 @@ local Settings = {
         Type = "Dot",
         Color = Color3.fromRGB(255, 255, 255),
         Rainbow = false,
-        Size = 8
+        Size = 8,
+        Position = 0.55 -- Позиция прицела (0.5 = центр, 0.55 = ниже)
     }
 }
 
--- Crosshair
+-- Crosshair (ниже центра)
 local crosshairGui = Instance.new("ScreenGui")
 crosshairGui.Name = "Crosshair"
 crosshairGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
@@ -36,7 +36,7 @@ crosshairGui.Parent = CoreGui
 
 local crosshairFrame = Instance.new("Frame")
 crosshairFrame.Size = UDim2.new(0, Settings.Crosshair.Size, 0, Settings.Crosshair.Size)
-crosshairFrame.Position = UDim2.new(0.5, -Settings.Crosshair.Size/2, 0.5, -Settings.Crosshair.Size/2)
+crosshairFrame.Position = UDim2.new(0.5, -Settings.Crosshair.Size/2, Settings.Crosshair.Position, -Settings.Crosshair.Size/2)
 crosshairFrame.BackgroundColor3 = Settings.Crosshair.Color
 crosshairFrame.BorderSizePixel = 0
 crosshairFrame.Visible = false
@@ -46,7 +46,6 @@ local crosshairCorner = Instance.new("UICorner")
 crosshairCorner.CornerRadius = UDim.new(1, 0)
 crosshairCorner.Parent = crosshairFrame
 
--- Rainbow crosshair effect
 local rainbowConnection
 local function updateCrosshair()
     crosshairFrame.Visible = Settings.Crosshair.Enabled
@@ -77,7 +76,7 @@ local function updateCrosshair()
         crosshairFrame.Size = UDim2.new(0, Settings.Crosshair.Size, 0, Settings.Crosshair.Size)
     end
     
-    crosshairFrame.Position = UDim2.new(0.5, -Settings.Crosshair.Size/2, 0.5, -Settings.Crosshair.Size/2)
+    crosshairFrame.Position = UDim2.new(0.5, -Settings.Crosshair.Size/2, Settings.Crosshair.Position, -Settings.Crosshair.Size/2)
 end
 
 -- Bunny Hop
@@ -352,7 +351,7 @@ local function createMobileMenu()
     shadow.SliceScale = 0.02
     shadow.Parent = floatingButton
 
-    -- Compact menu
+    -- Main menu
     local mainFrame = Instance.new("Frame")
     mainFrame.Size = UDim2.new(0.85, 0, 0.7, 0)
     mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
@@ -423,11 +422,57 @@ local function createMobileMenu()
     content.BorderSizePixel = 0
     content.ScrollBarThickness = 3
     content.ScrollBarImageColor3 = Color3.fromRGB(155, 89, 182)
-    content.CanvasSize = UDim2.new(0, 0, 0, 600)
+    content.CanvasSize = UDim2.new(0, 0, 0, 800)
     content.Parent = mainFrame
 
-    -- Features for mobile
-    local features = {
+    -- Tabs
+    local tabs = {
+        {name = "🎮 MAIN", color = Color3.fromRGB(52, 152, 219)},
+        {name = "⚙️ SETTINGS", color = Color3.fromRGB(155, 89, 182)}
+    }
+
+    local currentTab = "🎮 MAIN"
+    local tabButtons = {}
+
+    local tabContainer = Instance.new("Frame")
+    tabContainer.Size = UDim2.new(1, 0, 0, 35)
+    tabContainer.Position = UDim2.new(0, 0, 0, 0)
+    tabContainer.BackgroundTransparency = 1
+    tabContainer.Parent = content
+
+    for i, tab in pairs(tabs) do
+        local tabButton = Instance.new("TextButton")
+        tabButton.Size = UDim2.new(0.5, -5, 1, 0)
+        tabButton.Position = UDim2.new((i-1) * 0.5, 0, 0, 0)
+        tabButton.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
+        tabButton.BorderSizePixel = 0
+        tabButton.Text = tab.name
+        tabButton.TextColor3 = Color3.fromRGB(200, 200, 200)
+        tabButton.TextSize = 12
+        tabButton.Font = Enum.Font.GothamBold
+        tabButton.Parent = tabContainer
+
+        if i == 1 then
+            tabButton.BackgroundColor3 = tab.color
+            tabButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        end
+
+        tabButton.MouseButton1Click:Connect(function()
+            currentTab = tab.name
+            for _, btn in pairs(tabButtons) do
+                btn.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
+                btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+            end
+            tabButton.BackgroundColor3 = tab.color
+            tabButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+            updateContent()
+        end)
+
+        tabButtons[tab.name] = tabButton
+    end
+
+    -- Features for main tab
+    local mainFeatures = {
         {name = "🚀 Fly", setting = "Fly"},
         {name = "👁️ ESP", setting = "ESP"},
         {name = "💨 Speed", setting = "Speed"},
@@ -437,39 +482,165 @@ local function createMobileMenu()
         {name = "🎯 Crosshair", setting = "Crosshair"}
     }
 
-    for i, feature in pairs(features) do
-        local button = Instance.new("TextButton")
-        button.Size = UDim2.new(1, 0, 0, 35)
-        button.Position = UDim2.new(0, 0, 0, (i-1) * 40)
-        button.BackgroundColor3 = Settings[feature.setting].Enabled and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(45, 45, 65)
-        button.BorderSizePixel = 0
-        button.Text = feature.name
-        button.TextColor3 = Color3.fromRGB(255, 255, 255)
-        button.TextSize = 14
-        button.Font = Enum.Font.Gotham
-        button.Parent = content
-        
-        local buttonCorner = Instance.new("UICorner")
-        buttonCorner.CornerRadius = UDim.new(0.1, 0)
-        buttonCorner.Parent = button
+    -- Settings for settings tab
+    local settingOptions = {
+        {name = "Fly Speed", type = "slider", setting = "Fly", value = "Speed", min = 10, max = 100},
+        {name = "Speed Value", type = "slider", setting = "Speed", value = "WalkSpeed", min = 16, max = 100},
+        {name = "BHop Speed", type = "slider", setting = "BunnyHop", value = "Speed", min = 10, max = 100},
+        {name = "Hitbox Size", type = "slider", setting = "Hitbox", value = "Size", min = 2, max = 10},
+        {name = "3rd Person Dist", type = "slider", setting = "ThirdPerson", value = "Distance", min = 5, max = 20},
+        {name = "Crosshair Size", type = "slider", setting = "Crosshair", value = "Size", min = 4, max = 20},
+        {name = "Crosshair Pos", type = "slider", setting = "Crosshair", value = "Position", min = 0.4, max = 0.7, step = 0.01}
+    }
 
-        button.MouseButton1Click:Connect(function()
-            Settings[feature.setting].Enabled = not Settings[feature.setting].Enabled
-            button.BackgroundColor3 = Settings[feature.setting].Enabled and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(45, 45, 65)
-            
-            if feature.setting == "ESP" then
-                toggleESP()
-            elseif feature.setting == "Hitbox" then
-                updateHitboxes()
-            elseif feature.setting == "ThirdPerson" then
-                toggleThirdPerson()
-            elseif feature.setting == "Crosshair" then
-                updateCrosshair()
+    local function updateContent()
+        for _, child in pairs(content:GetChildren()) do
+            if child:IsA("Frame") and child ~= tabContainer then
+                child:Destroy()
             end
-        end)
+        end
+
+        local yPosition = 40
+
+        if currentTab == "🎮 MAIN" then
+            for i, feature in pairs(mainFeatures) do
+                local button = Instance.new("TextButton")
+                button.Size = UDim2.new(1, 0, 0, 35)
+                button.Position = UDim2.new(0, 0, 0, yPosition)
+                button.BackgroundColor3 = Settings[feature.setting].Enabled and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(45, 45, 65)
+                button.BorderSizePixel = 0
+                button.Text = feature.name
+                button.TextColor3 = Color3.fromRGB(255, 255, 255)
+                button.TextSize = 14
+                button.Font = Enum.Font.Gotham
+                button.Parent = content
+                
+                local buttonCorner = Instance.new("UICorner")
+                buttonCorner.CornerRadius = UDim.new(0.1, 0)
+                buttonCorner.Parent = button
+
+                button.MouseButton1Click:Connect(function()
+                    Settings[feature.setting].Enabled = not Settings[feature.setting].Enabled
+                    button.BackgroundColor3 = Settings[feature.setting].Enabled and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(45, 45, 65)
+                    
+                    if feature.setting == "ESP" then
+                        toggleESP()
+                    elseif feature.setting == "Hitbox" then
+                        updateHitboxes()
+                    elseif feature.setting == "ThirdPerson" then
+                        toggleThirdPerson()
+                    elseif feature.setting == "Crosshair" then
+                        updateCrosshair()
+                    end
+                end)
+
+                yPosition = yPosition + 40
+            end
+            content.CanvasSize = UDim2.new(0, 0, 0, yPosition)
+
+        elseif currentTab == "⚙️ SETTINGS" then
+            for i, setting in pairs(settingOptions) do
+                local settingContainer = Instance.new("Frame")
+                settingContainer.Size = UDim2.new(1, 0, 0, 50)
+                settingContainer.Position = UDim2.new(0, 0, 0, yPosition)
+                settingContainer.BackgroundTransparency = 1
+                settingContainer.Parent = content
+
+                local nameLabel = Instance.new("TextLabel")
+                nameLabel.Size = UDim2.new(1, 0, 0, 20)
+                nameLabel.BackgroundTransparency = 1
+                nameLabel.Text = setting.name
+                nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+                nameLabel.TextSize = 12
+                nameLabel.Font = Enum.Font.Gotham
+                nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+                nameLabel.Parent = settingContainer
+
+                local valueLabel = Instance.new("TextLabel")
+                valueLabel.Size = UDim2.new(0, 60, 0, 20)
+                valueLabel.Position = UDim2.new(1, -60, 0, 0)
+                valueLabel.BackgroundTransparency = 1
+                valueLabel.Text = tostring(Settings[setting.setting][setting.value])
+                valueLabel.TextColor3 = Color3.fromRGB(52, 152, 219)
+                valueLabel.TextSize = 12
+                valueLabel.Font = Enum.Font.GothamBold
+                valueLabel.TextXAlignment = Enum.TextXAlignment.Right
+                valueLabel.Parent = settingContainer
+
+                local sliderContainer = Instance.new("Frame")
+                sliderContainer.Size = UDim2.new(1, 0, 0, 20)
+                sliderContainer.Position = UDim2.new(0, 0, 0, 25)
+                sliderContainer.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+                sliderContainer.BorderSizePixel = 0
+                sliderContainer.Parent = settingContainer
+
+                local sliderCorner = Instance.new("UICorner")
+                sliderCorner.CornerRadius = UDim.new(0.1, 0)
+                sliderCorner.Parent = sliderContainer
+
+                local currentValue = Settings[setting.setting][setting.value]
+                local normalizedValue = (currentValue - setting.min) / (setting.max - setting.min)
+                
+                local sliderFill = Instance.new("Frame")
+                sliderFill.Size = UDim2.new(normalizedValue, 0, 1, 0)
+                sliderFill.BackgroundColor3 = Color3.fromRGB(52, 152, 219)
+                sliderFill.BorderSizePixel = 0
+                sliderFill.Parent = sliderContainer
+
+                local fillCorner = Instance.new("UICorner")
+                fillCorner.CornerRadius = UDim.new(0.1, 0)
+                fillCorner.Parent = sliderFill
+
+                local function updateSlider(value)
+                    local newValue
+                    if setting.step then
+                        newValue = math.floor((value - setting.min) / setting.step) * setting.step + setting.min
+                    else
+                        newValue = math.floor(value)
+                    end
+                    newValue = math.clamp(newValue, setting.min, setting.max)
+                    
+                    Settings[setting.setting][setting.value] = newValue
+                    valueLabel.Text = tostring(newValue)
+                    
+                    local newNormalized = (newValue - setting.min) / (setting.max - setting.min)
+                    sliderFill.Size = UDim2.new(newNormalized, 0, 1, 0)
+
+                    -- Update functionality
+                    if setting.setting == "Crosshair" and setting.value == "Position" then
+                        updateCrosshair()
+                    elseif setting.setting == "Crosshair" and setting.value == "Size" then
+                        updateCrosshair()
+                    end
+                end
+
+                sliderContainer.InputBegan:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.Touch then
+                        local connection
+                        connection = RunService.Heartbeat:Connect(function()
+                            local mousePos = UserInputService:GetMouseLocation()
+                            local sliderPos = sliderContainer.AbsolutePosition
+                            local sliderSize = sliderContainer.AbsoluteSize
+                            local relativeX = math.clamp((mousePos.X - sliderPos.X) / sliderSize.X, 0, 1)
+                            local newValue = setting.min + relativeX * (setting.max - setting.min)
+                            updateSlider(newValue)
+                        end)
+                        
+                        UserInputService.InputEnded:Connect(function(input)
+                            if input.UserInputType == Enum.UserInputType.Touch then
+                                connection:Disconnect()
+                            end
+                        end)
+                    end
+                end)
+
+                yPosition = yPosition + 55
+            end
+            content.CanvasSize = UDim2.new(0, 0, 0, yPosition)
+        end
     end
 
-    content.CanvasSize = UDim2.new(0, 0, 0, #features * 40)
+    updateContent()
 
     -- Menu open/close
     local isOpen = false
@@ -610,5 +781,5 @@ delay(2, function()
     updateCrosshair()
 end)
 
-print("FUESOS Menu Loaded!")
-print("DIEGO SOLO")
+print("FUES Optimizing Free Version!")
+print("DITGO SOLO")
