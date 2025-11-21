@@ -1,10 +1,351 @@
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
+local Workspace = game:GetService("Workspace")
 
 local player = Players.LocalPlayer
+local camera = Workspace.CurrentCamera
 
+-- Настройки визуалов
+local Visuals = {
+    ESP = {
+        Enabled = false,
+        Players = {},
+        ShowName = true,
+        ShowDistance = true,
+        ShowHealth = true,
+        BoxColor = Color3.fromRGB(255, 50, 50)
+    },
+    Tracers = {
+        Enabled = false,
+        Lines = {}
+    },
+    Chams = {
+        Enabled = false,
+        Materials = {}
+    },
+    Boxes = {
+        Enabled = false,
+        Boxes = {}
+    }
+}
+
+-- Функции ESP
+local function createESP(targetPlayer)
+    if not Visuals.ESP.Enabled then return end
+    if targetPlayer == player then return end
+    if not targetPlayer.Character then return end
+    
+    local character = targetPlayer.Character
+    local humanoid = character:FindFirstChild("Humanoid")
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    local head = character:FindFirstChild("Head")
+    
+    if not rootPart or not head then return end
+
+    -- Создаем ESP Box
+    local box = Instance.new("BoxHandleAdornment")
+    box.Name = targetPlayer.Name .. "_ESPBOX"
+    box.Adornee = rootPart
+    box.AlwaysOnTop = true
+    box.ZIndex = 1
+    box.Size = rootPart.Size + Vector3.new(0.1, 0.1, 0.1)
+    box.Transparency = 0.3
+    box.Color3 = Visuals.ESP.BoxColor
+    box.Parent = Workspace
+
+    -- Создаем BillboardGui для информации
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = targetPlayer.Name .. "_ESPINFO"
+    billboard.Adornee = head
+    billboard.Size = UDim2.new(0, 200, 0, 80)
+    billboard.StudsOffset = Vector3.new(0, 3, 0)
+    billboard.AlwaysOnTop = true
+    billboard.Parent = Workspace
+
+    local infoLabel = Instance.new("TextLabel")
+    infoLabel.Size = UDim2.new(1, 0, 1, 0)
+    infoLabel.BackgroundTransparency = 0.7
+    infoLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    infoLabel.Text = ""
+    infoLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    infoLabel.TextSize = 14
+    infoLabel.Font = Enum.Font.GothamBold
+    infoLabel.Parent = billboard
+
+    Visuals.ESP.Players[targetPlayer] = {
+        Box = box,
+        Billboard = billboard,
+        InfoLabel = infoLabel,
+        Character = character
+    }
+
+    -- Обновление информации в реальном времени
+    local connection
+    connection = RunService.Heartbeat:Connect(function()
+        if not Visuals.ESP.Enabled or not character or not rootPart or not player.Character then
+            if connection then
+                connection:Disconnect()
+            end
+            return
+        end
+
+        local infoText = ""
+        
+        if Visuals.ESP.ShowName then
+            infoText = targetPlayer.Name .. "\n"
+        end
+        
+        if Visuals.ESP.ShowDistance and player.Character:FindFirstChild("HumanoidRootPart") then
+            local distance = (rootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude
+            infoText = infoText .. "Distance: " .. math.floor(distance) .. " studs\n"
+        end
+        
+        if Visuals.ESP.ShowHealth and humanoid then
+            infoText = infoText .. "Health: " .. math.floor(humanoid.Health) .. "/" .. math.floor(humanoid.MaxHealth)
+        end
+
+        infoLabel.Text = infoText
+    end)
+end
+
+local function removeESP(targetPlayer)
+    if Visuals.ESP.Players[targetPlayer] then
+        if Visuals.ESP.Players[targetPlayer].Box then
+            Visuals.ESP.Players[targetPlayer].Box:Destroy()
+        end
+        if Visuals.ESP.Players[targetPlayer].Billboard then
+            Visuals.ESP.Players[targetPlayer].Billboard:Destroy()
+        end
+        Visuals.ESP.Players[targetPlayer] = nil
+    end
+end
+
+local function toggleESP()
+    if Visuals.ESP.Enabled then
+        -- Включаем ESP для всех игроков
+        for _, otherPlayer in pairs(Players:GetPlayers()) do
+            if otherPlayer ~= player then
+                if otherPlayer.Character then
+                    createESP(otherPlayer)
+                end
+                otherPlayer.CharacterAdded:Connect(function()
+                    wait(1)
+                    createESP(otherPlayer)
+                end)
+            end
+        end
+    else
+        -- Выключаем ESP для всех игроков
+        for targetPlayer, _ in pairs(Visuals.ESP.Players) do
+            removeESP(targetPlayer)
+        end
+    end
+end
+
+-- Функции Tracers
+local function createTracer(targetPlayer)
+    if not Visuals.Tracers.Enabled then return end
+    if targetPlayer == player then return end
+    
+    local tracer = Instance.new("Frame")
+    tracer.Name = targetPlayer.Name .. "_TRACER"
+    tracer.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+    tracer.BorderSizePixel = 0
+    tracer.Size = UDim2.new(0, 2, 0, 100)
+    tracer.AnchorPoint = Vector2.new(0.5, 0)
+    tracer.Visible = false
+    tracer.Parent = CoreGui
+
+    Visuals.Tracers.Lines[targetPlayer] = tracer
+
+    -- Обновление позиции трассера
+    local connection
+    connection = RunService.Heartbeat:Connect(function()
+        if not Visuals.Tracers.Enabled or not targetPlayer.Character then
+            tracer.Visible = false
+            if connection then
+                connection:Disconnect()
+            end
+            return
+        end
+
+        local rootPart = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if rootPart and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local screenPoint, onScreen = camera:WorldToViewportPoint(rootPart.Position)
+            
+            if onScreen then
+                tracer.Visible = true
+                tracer.Position = UDim2.new(0, screenPoint.X, 0, screenPoint.Y)
+                
+                -- Вычисляем длину и угол
+                local playerScreenPos = camera:WorldToViewportPoint(player.Character.HumanoidRootPart.Position)
+                local delta = Vector2.new(screenPoint.X - playerScreenPos.X, screenPoint.Y - playerScreenPos.Y)
+                local length = math.sqrt(delta.X * delta.X + delta.Y * delta.Y)
+                local angle = math.atan2(delta.Y, delta.X)
+                
+                tracer.Size = UDim2.new(0, 2, 0, length)
+                tracer.Rotation = math.deg(angle) + 90
+            else
+                tracer.Visible = false
+            end
+        else
+            tracer.Visible = false
+        end
+    end)
+end
+
+local function removeTracer(targetPlayer)
+    if Visuals.Tracers.Lines[targetPlayer] then
+        Visuals.Tracers.Lines[targetPlayer]:Destroy()
+        Visuals.Tracers.Lines[targetPlayer] = nil
+    end
+end
+
+local function toggleTracers()
+    if Visuals.Tracers.Enabled then
+        for _, otherPlayer in pairs(Players:GetPlayers()) do
+            if otherPlayer ~= player then
+                createTracer(otherPlayer)
+            end
+        end
+    else
+        for targetPlayer, _ in pairs(Visuals.Tracers.Lines) do
+            removeTracer(targetPlayer)
+        end
+    end
+end
+
+-- Функции Chams
+local function applyChams(targetPlayer)
+    if not Visuals.Chams.Enabled then return end
+    if targetPlayer == player then return end
+    if not targetPlayer.Character then return end
+    
+    for _, part in pairs(targetPlayer.Character:GetChildren()) do
+        if part:IsA("BasePart") then
+            local originalMaterial = part.Material
+            local originalTransparency = part.Transparency
+            
+            part.Material = Enum.Material.ForceField
+            part.Transparency = 0.3
+            
+            Visuals.Chams.Materials[part] = {
+                OriginalMaterial = originalMaterial,
+                OriginalTransparency = originalTransparency
+            }
+        end
+    end
+end
+
+local function removeChams(targetPlayer)
+    if not targetPlayer.Character then return end
+    
+    for part, materials in pairs(Visuals.Chams.Materials) do
+        if part and part.Parent then
+            part.Material = materials.OriginalMaterial
+            part.Transparency = materials.OriginalTransparency
+        end
+    end
+end
+
+local function toggleChams()
+    if Visuals.Chams.Enabled then
+        for _, otherPlayer in pairs(Players:GetPlayers()) do
+            if otherPlayer ~= player then
+                applyChams(otherPlayer)
+            end
+        end
+    else
+        for targetPlayer, _ in pairs(Players:GetPlayers()) do
+            if targetPlayer ~= player then
+                removeChams(targetPlayer)
+            end
+        end
+    end
+end
+
+-- Функции Box ESP
+local function createBox(targetPlayer)
+    if not Visuals.Boxes.Enabled then return end
+    if targetPlayer == player then return end
+    if not targetPlayer.Character then return end
+    
+    local rootPart = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return end
+
+    local box = Instance.new("BoxHandleAdornment")
+    box.Name = targetPlayer.Name .. "_BOX"
+    box.Adornee = rootPart
+    box.AlwaysOnTop = true
+    box.ZIndex = 0
+    box.Size = rootPart.Size + Vector3.new(0.2, 0.2, 0.2)
+    box.Transparency = 0.7
+    box.Color3 = Color3.fromRGB(0, 255, 0)
+    box.Parent = Workspace
+
+    Visuals.Boxes.Boxes[targetPlayer] = box
+end
+
+local function removeBox(targetPlayer)
+    if Visuals.Boxes.Boxes[targetPlayer] then
+        Visuals.Boxes.Boxes[targetPlayer]:Destroy()
+        Visuals.Boxes.Boxes[targetPlayer] = nil
+    end
+end
+
+local function toggleBoxes()
+    if Visuals.Boxes.Enabled then
+        for _, otherPlayer in pairs(Players:GetPlayers()) do
+            if otherPlayer ~= player then
+                createBox(otherPlayer)
+            end
+        end
+    else
+        for targetPlayer, _ in pairs(Visuals.Boxes.Boxes) do
+            removeBox(targetPlayer)
+        end
+    end
+end
+
+-- Обработчики игроков
+Players.PlayerAdded:Connect(function(newPlayer)
+    if Visuals.ESP.Enabled then
+        newPlayer.CharacterAdded:Connect(function()
+            wait(1)
+            createESP(newPlayer)
+        end)
+    end
+    if Visuals.Tracers.Enabled then
+        newPlayer.CharacterAdded:Connect(function()
+            wait(1)
+            createTracer(newPlayer)
+        end)
+    end
+    if Visuals.Chams.Enabled then
+        newPlayer.CharacterAdded:Connect(function()
+            wait(1)
+            applyChams(newPlayer)
+        end)
+    end
+    if Visuals.Boxes.Enabled then
+        newPlayer.CharacterAdded:Connect(function()
+            wait(1)
+            createBox(newPlayer)
+        end)
+    end
+end)
+
+Players.PlayerRemoving:Connect(function(leavingPlayer)
+    removeESP(leavingPlayer)
+    removeTracer(leavingPlayer)
+    removeChams(leavingPlayer)
+    removeBox(leavingPlayer)
+end)
+
+-- Создание меню
 local function createGigasikDLC()
     if CoreGui:FindFirstChild("gigasikDLC") then
         CoreGui:FindFirstChild("gigasikDLC"):Destroy()
@@ -95,7 +436,7 @@ local function createGigasikDLC()
         FUN = Color3.fromRGB(80, 220, 120)
     }
 
-    local currentTab = "COMBAT"
+    local currentTab = "VISUALS"
     local tabFrames = {}
 
     -- Создаем кнопки вкладок
@@ -124,7 +465,7 @@ local function createGigasikDLC()
 
         tabFrames[tabName] = {button = tabButton, content = tabContent}
 
-        if i == 1 then
+        if tabName == "VISUALS" then
             tabButton.BackgroundColor3 = tabColors[tabName]
             tabButton.TextColor3 = Color3.fromRGB(255, 255, 255)
         end
@@ -165,37 +506,96 @@ local function createGigasikDLC()
         end)
     end
 
-    -- Заполняем вкладки
-    local features = {
-        COMBAT = {"Aim Assist", "Trigger Bot", "No Recoil", "Rapid Fire", "Hitboxes"},
-        VISUALS = {"Player ESP", "Item ESP", "Chams", "Tracers", "Radar"},
-        FUN = {"Fly Hack", "Speed Hack", "Bunny Hop", "Noclip", "Super Jump"}
+    -- Заполняем вкладку VISUALS
+    local visualsFeatures = {
+        {name = "Player ESP", type = "toggle", setting = "ESP", func = toggleESP},
+        {name = "Tracers", type = "toggle", setting = "Tracers", func = toggleTracers},
+        {name = "Chams", type = "toggle", setting = "Chams", func = toggleChams},
+        {name = "Box ESP", type = "toggle", setting = "Boxes", func = toggleBoxes},
+        {name = "Show Names", type = "toggle", setting = "ESP", value = "ShowName"},
+        {name = "Show Distance", type = "toggle", setting = "ESP", value = "ShowDistance"},
+        {name = "Show Health", type = "toggle", setting = "ESP", value = "ShowHealth"}
     }
 
-    for tabName, tabFeatures in pairs(features) do
-        local tabContent = tabFrames[tabName].content
-        local yPosition = 0
+    local visualsContent = tabFrames["VISUALS"].content
+    local yPosition = 0
+    
+    for i, feature in pairs(visualsFeatures) do
+        local button = Instance.new("TextButton")
+        button.Size = UDim2.new(1, 0, 0, 35)
+        button.Position = UDim2.new(0, 0, 0, yPosition)
         
-        for i, feature in pairs(tabFeatures) do
-            local button = Instance.new("TextButton")
-            button.Size = UDim2.new(1, 0, 0, 35)
-            button.Position = UDim2.new(0, 0, 0, yPosition)
-            button.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-            button.BorderSizePixel = 0
-            button.Text = feature
-            button.TextColor3 = Color3.fromRGB(255, 255, 255)
-            button.TextSize = 14
-            button.Font = Enum.Font.Gotham
-            button.Parent = tabContent
-            
-            local buttonCorner = Instance.new("UICorner")
-            buttonCorner.CornerRadius = UDim.new(0.1, 0)
-            buttonCorner.Parent = button
-
-            yPosition = yPosition + 40
+        -- Определяем цвет кнопки в зависимости от состояния
+        local isEnabled
+        if feature.value then
+            isEnabled = Visuals[feature.setting][feature.value]
+        else
+            isEnabled = Visuals[feature.setting].Enabled
         end
-        tabContent.CanvasSize = UDim2.new(0, 0, 0, yPosition)
+        
+        button.BackgroundColor3 = isEnabled and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(50, 50, 70)
+        button.BorderSizePixel = 0
+        button.Text = feature.name
+        button.TextColor3 = Color3.fromRGB(255, 255, 255)
+        button.TextSize = 14
+        button.Font = Enum.Font.Gotham
+        button.Parent = visualsContent
+        
+        local buttonCorner = Instance.new("UICorner")
+        buttonCorner.CornerRadius = UDim.new(0.1, 0)
+        buttonCorner.Parent = button
+
+        button.MouseButton1Click:Connect(function()
+            if feature.value then
+                -- Для настроек (Show Name, Distance, Health)
+                Visuals[feature.setting][feature.value] = not Visuals[feature.setting][feature.value]
+                button.BackgroundColor3 = Visuals[feature.setting][feature.value] and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(50, 50, 70)
+            else
+                -- Для основных функций (ESP, Tracers и т.д.)
+                Visuals[feature.setting].Enabled = not Visuals[feature.setting].Enabled
+                button.BackgroundColor3 = Visuals[feature.setting].Enabled and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(50, 50, 70)
+                
+                if feature.func then
+                    feature.func()
+                end
+            end
+        end)
+
+        yPosition = yPosition + 40
     end
+    visualsContent.CanvasSize = UDim2.new(0, 0, 0, yPosition)
+
+    -- Заполняем другие вкладки (заглушки)
+    local combatFeatures = {"Aim Assist", "Trigger Bot", "No Recoil", "Rapid Fire", "Hitboxes"}
+    local funFeatures = {"Fly Hack", "Speed Hack", "Bunny Hop", "Noclip", "Super Jump"}
+
+    for i, feature in pairs(combatFeatures) do
+        local button = Instance.new("TextButton")
+        button.Size = UDim2.new(1, 0, 0, 35)
+        button.Position = UDim2.new(0, 0, 0, (i-1)*40)
+        button.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+        button.BorderSizePixel = 0
+        button.Text = feature
+        button.TextColor3 = Color3.fromRGB(255, 255, 255)
+        button.TextSize = 14
+        button.Font = Enum.Font.Gotham
+        button.Parent = tabFrames["COMBAT"].content
+    end
+    tabFrames["COMBAT"].content.CanvasSize = UDim2.new(0, 0, 0, #combatFeatures * 40)
+
+    for i, feature in pairs(funFeatures) do
+        local button = Instance.new("TextButton")
+        button.Size = UDim2.new(1, 0, 0, 35)
+        button.Position = UDim2.new(0, 0, 0, (i-1)*40)
+        button.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+        button.BorderSizePixel = 0
+        button.Text = feature
+        button.TextColor3 = Color3.fromRGB(255, 255, 255)
+        button.TextSize = 14
+        button.Font = Enum.Font.Gotham
+        button.Parent = tabFrames["FUN"].content
+    end
+    tabFrames["FUN"].content.CanvasSize = UDim2.new(0, 0, 0, #funFeatures * 40)
 
     -- Функционал меню
     local menuOpen = false
@@ -266,5 +666,26 @@ local function createGigasikDLC()
     return mainGui
 end
 
+-- Инициализация
 local menu = createGigasikDLC()
-print("gigasikDLC LOADED!")
+
+-- Инициализация визуалов для существующих игроков
+for _, otherPlayer in pairs(Players:GetPlayers()) do
+    if otherPlayer ~= player then
+        if otherPlayer.Character then
+            if Visuals.ESP.Enabled then createESP(otherPlayer) end
+            if Visuals.Tracers.Enabled then createTracer(otherPlayer) end
+            if Visuals.Chams.Enabled then applyChams(otherPlayer) end
+            if Visuals.Boxes.Enabled then createBox(otherPlayer) end
+        end
+        otherPlayer.CharacterAdded:Connect(function()
+            wait(1)
+            if Visuals.ESP.Enabled then createESP(otherPlayer) end
+            if Visuals.Tracers.Enabled then createTracer(otherPlayer) end
+            if Visuals.Chams.Enabled then applyChams(otherPlayer) end
+            if Visuals.Boxes.Enabled then createBox(otherPlayer) end
+        end)
+    end
+end
+
+print("gigasikDLC LOADED! All visuals are working!")
