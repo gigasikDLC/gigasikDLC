@@ -82,14 +82,12 @@ local function createGigasikDLC()
     tabContainer.BorderSizePixel = 0
     tabContainer.Parent = mainFrame
 
-    local contentFrame = Instance.new("ScrollingFrame")
+    local contentFrame = Instance.new("Frame")
     contentFrame.Size = UDim2.new(1, -10, 1, -85)
     contentFrame.Position = UDim2.new(0, 5, 0, 80)
     contentFrame.BackgroundTransparency = 1
     contentFrame.BorderSizePixel = 0
-    contentFrame.ScrollBarThickness = 4
-    contentFrame.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 150)
-    contentFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+    contentFrame.ClipsDescendants = true
     contentFrame.Parent = mainFrame
 
     local tabs = {
@@ -100,6 +98,7 @@ local function createGigasikDLC()
 
     local currentTab = "COMBAT"
     local tabButtons = {}
+    local tabContents = {}
 
     for i, tab in pairs(tabs) do
         local tabButton = Instance.new("TextButton")
@@ -118,62 +117,75 @@ local function createGigasikDLC()
             tabButton.TextColor3 = Color3.fromRGB(255, 255, 255)
         end
 
+        local tabContent = Instance.new("ScrollingFrame")
+        tabContent.Size = UDim2.new(1, 0, 1, 0)
+        tabContent.Position = UDim2.new(0, 0, 0, 0)
+        tabContent.BackgroundTransparency = 1
+        tabContent.BorderSizePixel = 0
+        tabContent.ScrollBarThickness = 4
+        tabContent.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 150)
+        tabContent.CanvasSize = UDim2.new(0, 0, 0, 0)
+        tabContent.Visible = (i == 1)
+        tabContent.Parent = contentFrame
+
+        tabButtons[tab.name] = tabButton
+        tabContents[tab.name] = tabContent
+
         tabButton.MouseButton1Click:Connect(function()
-            currentTab = tab.name
+            if currentTab == tab.name then return end
+            
+            -- Анимация перехода
+            local oldContent = tabContents[currentTab]
+            local newContent = tabContent
+            
+            -- Скрываем старую вкладку
+            TweenService:Create(oldContent, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                Position = UDim2.new(-1, 0, 0, 0)
+            }):Play()
+            
+            wait(0.1)
+            oldContent.Visible = false
+            
+            -- Показываем новую вкладку
+            newContent.Position = UDim2.new(1, 0, 0, 0)
+            newContent.Visible = true
+            
+            TweenService:Create(newContent, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                Position = UDim2.new(0, 0, 0, 0)
+            }):Play()
+            
+            -- Обновляем кнопки вкладок
             for _, btn in pairs(tabButtons) do
                 btn.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
                 btn.TextColor3 = Color3.fromRGB(180, 180, 180)
             end
             tabButton.BackgroundColor3 = tab.color
             tabButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-            updateContent()
+            
+            currentTab = tab.name
         end)
-
-        tabButtons[tab.name] = tabButton
     end
 
+    -- Заполняем вкладки
     local combatFeatures = {
-        "Aim Assist",
-        "Trigger Bot", 
-        "No Recoil",
-        "Rapid Fire",
-        "Hitboxes"
+        "Aim Assist", "Trigger Bot", "No Recoil", "Rapid Fire", "Hitboxes",
+        "Silent Aim", "Auto Wall", "Damage Multiplier", "Fire Rate", "Accuracy"
     }
 
     local visualsFeatures = {
-        "Player ESP",
-        "Item ESP",
-        "Chams",
-        "Tracers",
-        "Radar"
+        "Player ESP", "Item ESP", "Chams", "Tracers", "Radar",
+        "Name Tags", "Health Bars", "Distance", "Box ESP", "Snaplines"
     }
 
     local funFeatures = {
-        "Fly Hack",
-        "Speed Hack",
-        "Bunny Hop",
-        "Noclip",
-        "Super Jump"
+        "Fly Hack", "Speed Hack", "Bunny Hop", "Noclip", "Super Jump",
+        "Gravity Hack", "Teleport", "Infinite Jump", "Anti-AFK", "Time Scale"
     }
 
-    local function updateContent()
-        for _, child in pairs(contentFrame:GetChildren()) do
-            if child:IsA("TextButton") then
-                child:Destroy()
-            end
-        end
-
+    local function populateTab(tabName, features)
+        local tabContent = tabContents[tabName]
         local yPosition = 0
-        local features = {}
-
-        if currentTab == "COMBAT" then
-            features = combatFeatures
-        elseif currentTab == "VISUALS" then
-            features = visualsFeatures
-        elseif currentTab == "FUN" then
-            features = funFeatures
-        end
-
+        
         for i, feature in pairs(features) do
             local button = Instance.new("TextButton")
             button.Size = UDim2.new(1, 0, 0, 35)
@@ -184,7 +196,7 @@ local function createGigasikDLC()
             button.TextColor3 = Color3.fromRGB(255, 255, 255)
             button.TextSize = 14
             button.Font = Enum.Font.Gotham
-            button.Parent = contentFrame
+            button.Parent = tabContent
             
             local buttonCorner = Instance.new("UICorner")
             buttonCorner.CornerRadius = UDim.new(0.1, 0)
@@ -196,12 +208,16 @@ local function createGigasikDLC()
 
             yPosition = yPosition + 40
         end
-        contentFrame.CanvasSize = UDim2.new(0, 0, 0, yPosition)
+        tabContent.CanvasSize = UDim2.new(0, 0, 0, yPosition)
     end
 
-    updateContent()
+    populateTab("COMBAT", combatFeatures)
+    populateTab("VISUALS", visualsFeatures)
+    populateTab("FUN", funFeatures)
 
     local menuOpen = false
+    local dragging = false
+    local dragStart, startPos
 
     openButton.MouseButton1Click:Connect(function()
         menuOpen = not menuOpen
@@ -211,6 +227,60 @@ local function createGigasikDLC()
     closeButton.MouseButton1Click:Connect(function()
         menuOpen = false
         mainFrame.Visible = false
+    end)
+
+    -- Перемещение меню
+    header.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = mainFrame.Position
+        end
+    end)
+
+    header.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            if dragging then
+                local delta = input.Position - dragStart
+                mainFrame.Position = UDim2.new(
+                    startPos.X.Scale, startPos.X.Offset + delta.X,
+                    startPos.Y.Scale, startPos.Y.Offset + delta.Y
+                )
+            end
+        end
+    end)
+
+    header.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
+
+    -- Перемещение кнопки открытия
+    openButton.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = openButton.Position
+        end
+    end)
+
+    openButton.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            if dragging then
+                local delta = input.Position - dragStart
+                openButton.Position = UDim2.new(
+                    startPos.X.Scale, startPos.X.Offset + delta.X,
+                    startPos.Y.Scale, startPos.Y.Offset + delta.Y
+                )
+            end
+        end
+    end)
+
+    openButton.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
     end)
 
     return mainGui
