@@ -1,3 +1,4 @@
+
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
@@ -6,22 +7,15 @@ local CoreGui = game:GetService("CoreGui")
 local Workspace = game:GetService("Workspace")
 
 local player = Players.LocalPlayer
-local isMobile = UserInputService.TouchEnabled
 
 local Settings = {
-    Menu = {Visible = false},
     BunnyHop = {Enabled = false, Speed = 50},
     Hitbox = {Enabled = false, Size = 6},
     ESP = {Enabled = false, ShowDistance = true, ShowHealth = true},
     Fly = {Enabled = false, Speed = 50},
     Speed = {Enabled = false, WalkSpeed = 40},
     ThirdPerson = {Enabled = false, Distance = 10},
-    Crosshair = {
-        Enabled = false,
-        Rainbow = false,
-        Size = 8,
-        Position = 0.55
-    }
+    Crosshair = {Enabled = false, Rainbow = false, Size = 8, Position = 0.55}
 }
 
 local crosshairGui = Instance.new("ScreenGui")
@@ -50,11 +44,12 @@ local function updateCrosshair()
         if not rainbowConnection then
             rainbowConnection = RunService.Heartbeat:Connect(function()
                 if not Settings.Crosshair.Enabled or not Settings.Crosshair.Rainbow then
-                    rainbowConnection:Disconnect()
-                    rainbowConnection = nil
+                    if rainbowConnection then
+                        rainbowConnection:Disconnect()
+                        rainbowConnection = nil
+                    end
                     return
                 end
-                
                 local time = tick()
                 local r = math.sin(time * 2) * 0.5 + 0.5
                 local g = math.sin(time * 2 + 2) * 0.5 + 0.5
@@ -83,44 +78,38 @@ local function bunnyHop()
     
     if humanoid and rootPart and humanoid.FloorMaterial ~= Enum.Material.Air then
         humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-        
         local currentVel = rootPart.Velocity
         local lookVector = rootPart.CFrame.LookVector
-        
         local newVelocity = Vector3.new(
             lookVector.X * Settings.BunnyHop.Speed,
             currentVel.Y,
             lookVector.Z * Settings.BunnyHop.Speed
         )
-        
         rootPart.Velocity = newVelocity
     end
 end
 
-local hitboxUpdateConnection
+local originalSizes = {}
 local function updateHitboxes()
-    if not Settings.Hitbox.Enabled then
-        if hitboxUpdateConnection then
-            hitboxUpdateConnection:Disconnect()
-            hitboxUpdateConnection = nil
-        end
-        return
-    end
-    
     for _, otherPlayer in pairs(Players:GetPlayers()) do
         if otherPlayer ~= player and otherPlayer.Character then
             local root = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
             if root then
                 if Settings.Hitbox.Enabled then
+                    if not originalSizes[otherPlayer] then
+                        originalSizes[otherPlayer] = root.Size
+                    end
                     root.Size = Vector3.new(Settings.Hitbox.Size, Settings.Hitbox.Size, Settings.Hitbox.Size)
                     root.Transparency = 0.5
                     root.BrickColor = BrickColor.new("Bright red")
                     root.Material = Enum.Material.Neon
                 else
-                    root.Size = Vector3.new(2, 2, 1)
-                    root.Transparency = 1
-                    root.BrickColor = BrickColor.new("Medium stone grey")
-                    root.Material = Enum.Material.Plastic
+                    if originalSizes[otherPlayer] then
+                        root.Size = originalSizes[otherPlayer]
+                        root.Transparency = 1
+                        root.BrickColor = BrickColor.new("Medium stone grey")
+                        root.Material = Enum.Material.Plastic
+                    end
                 end
             end
         end
@@ -183,11 +172,9 @@ local function createESP(targetPlayer)
     local espConnection
     espConnection = RunService.Heartbeat:Connect(function()
         if not Settings.ESP.Enabled or not char or not root then
-            box:Destroy()
-            tag:Destroy()
-            if espConnection then
-                espConnection:Disconnect()
-            end
+            if box then box:Destroy() end
+            if tag then tag:Destroy() end
+            if espConnection then espConnection:Disconnect() end
             return
         end
         
@@ -196,7 +183,7 @@ local function createESP(targetPlayer)
             local infoText = ""
             
             if Settings.ESP.ShowDistance then
-                infoText = infoText .. math.floor(dist) .. " studs"
+                infoText = math.floor(dist) .. " studs"
             end
             
             if Settings.ESP.ShowHealth and humanoid then
@@ -217,15 +204,15 @@ local function toggleESP()
     if Settings.ESP.Enabled then
         for _, otherPlayer in pairs(Players:GetPlayers()) do
             if otherPlayer ~= player then
-                spawn(function()
-                    if otherPlayer.Character then
-                        wait(0.5)
-                        createESP(otherPlayer)
-                    end
-                    otherPlayer.CharacterAdded:Connect(function()
+                if otherPlayer.Character then
+                    spawn(function()
                         wait(0.5)
                         createESP(otherPlayer)
                     end)
+                end
+                otherPlayer.CharacterAdded:Connect(function(char)
+                    wait(0.5)
+                    createESP(otherPlayer)
                 end)
             end
         end
@@ -345,7 +332,7 @@ local function createMobileMenu()
     local icon = Instance.new("TextLabel")
     icon.Size = UDim2.new(1, 0, 1, 0)
     icon.BackgroundTransparency = 1
-    icon.Text = "❤️"
+    icon.Text = "✨"
     icon.TextColor3 = Color3.fromRGB(255, 255, 255)
     icon.TextSize = 20
     icon.Font = Enum.Font.GothamBold
@@ -434,7 +421,7 @@ local function createMobileMenu()
     content.BorderSizePixel = 0
     content.ScrollBarThickness = 3
     content.ScrollBarImageColor3 = Color3.fromRGB(155, 89, 182)
-    content.CanvasSize = UDim2.new(0, 0, 0, 1200)
+    content.CanvasSize = UDim2.new(0, 0, 0, 0)
     content.Parent = mainFrame
 
     local tabs = {
@@ -776,11 +763,9 @@ end)
 
 Players.PlayerAdded:Connect(function(newPlayer)
     if Settings.ESP.Enabled then
-        spawn(function()
-            newPlayer.CharacterAdded:Connect(function()
-                wait(1)
-                createESP(newPlayer)
-            end)
+        newPlayer.CharacterAdded:Connect(function()
+            wait(1)
+            createESP(newPlayer)
         end)
     end
 end)
