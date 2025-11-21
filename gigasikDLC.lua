@@ -16,99 +16,132 @@ local Visuals = {
         ShowName = true,
         ShowDistance = true,
         ShowHealth = true,
-        BoxColor = Color3.fromRGB(255, 50, 50)
+        MaxDistance = 200
     },
     Tracers = {
         Enabled = false,
-        Lines = {}
+        Lines = {},
+        MaxDistance = 200
     },
     Chams = {
         Enabled = false,
-        Materials = {}
+        Materials = {},
+        MaxDistance = 200
     },
     Boxes = {
         Enabled = false,
-        Boxes = {}
+        Boxes = {},
+        MaxDistance = 200
     }
 }
 
--- Функции ESP
-local function createESP(targetPlayer)
-    if not Visuals.ESP.Enabled then return end
-    if targetPlayer == player then return end
-    if not targetPlayer.Character then return end
+-- Общие функции для работы с игроками
+local function getPlayerData(targetPlayer)
+    if not targetPlayer then return nil end
+    if not targetPlayer.Character then return nil end
     
-    local character = targetPlayer.Character
-    local humanoid = character:FindFirstChild("Humanoid")
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    local head = character:FindFirstChild("Head")
+    local humanoid = targetPlayer.Character:FindFirstChild("Humanoid")
+    local rootPart = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
     
-    if not rootPart or not head then return end
-
-    -- Создаем ESP Box
-    local box = Instance.new("BoxHandleAdornment")
-    box.Name = targetPlayer.Name .. "_ESPBOX"
-    box.Adornee = rootPart
-    box.AlwaysOnTop = true
-    box.ZIndex = 1
-    box.Size = rootPart.Size + Vector3.new(0.1, 0.1, 0.1)
-    box.Transparency = 0.3
-    box.Color3 = Visuals.ESP.BoxColor
-    box.Parent = Workspace
-
-    -- Создаем BillboardGui для информации
-    local billboard = Instance.new("BillboardGui")
-    billboard.Name = targetPlayer.Name .. "_ESPINFO"
-    billboard.Adornee = head
-    billboard.Size = UDim2.new(0, 200, 0, 80)
-    billboard.StudsOffset = Vector3.new(0, 3, 0)
-    billboard.AlwaysOnTop = true
-    billboard.Parent = Workspace
-
-    local infoLabel = Instance.new("TextLabel")
-    infoLabel.Size = UDim2.new(1, 0, 1, 0)
-    infoLabel.BackgroundTransparency = 0.7
-    infoLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    infoLabel.Text = ""
-    infoLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    infoLabel.TextSize = 14
-    infoLabel.Font = Enum.Font.GothamBold
-    infoLabel.Parent = billboard
-
-    Visuals.ESP.Players[targetPlayer] = {
-        Box = box,
-        Billboard = billboard,
-        InfoLabel = infoLabel,
-        Character = character
+    if not rootPart then return nil end
+    
+    local distance = 0
+    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        distance = (rootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude
+    end
+    
+    return {
+        Character = targetPlayer.Character,
+        Humanoid = humanoid,
+        RootPart = rootPart,
+        Head = targetPlayer.Character:FindFirstChild("Head"),
+        Distance = distance,
+        IsAlive = humanoid and humanoid.Health > 0 or false
     }
+end
 
-    -- Обновление информации в реальном времени
-    local connection
-    connection = RunService.Heartbeat:Connect(function()
-        if not Visuals.ESP.Enabled or not character or not rootPart or not player.Character then
-            if connection then
-                connection:Disconnect()
-            end
-            return
+-- Функции ESP
+local function updateESP(targetPlayer)
+    if not Visuals.ESP.Enabled then return end
+    
+    local data = getPlayerData(targetPlayer)
+    if not data then return end
+    
+    -- Проверяем дистанцию
+    if data.Distance > Visuals.ESP.MaxDistance then
+        if Visuals.ESP.Players[targetPlayer] then
+            Visuals.ESP.Players[targetPlayer].Box.Visible = false
+            Visuals.ESP.Players[targetPlayer].Billboard.Enabled = false
         end
+        return
+    end
+    
+    -- Создаем ESP если еще не создано
+    if not Visuals.ESP.Players[targetPlayer] then
+        local box = Instance.new("BoxHandleAdornment")
+        box.Name = targetPlayer.Name .. "_ESPBOX"
+        box.Adornee = data.RootPart
+        box.AlwaysOnTop = true
+        box.ZIndex = 1
+        box.Size = data.RootPart.Size + Vector3.new(0.1, 0.1, 0.1)
+        box.Transparency = 0.3
+        box.Color3 = Color3.fromRGB(255, 50, 50)
+        box.Parent = Workspace
 
-        local infoText = ""
+        local billboard = Instance.new("BillboardGui")
+        billboard.Name = targetPlayer.Name .. "_ESPINFO"
+        billboard.Adornee = data.Head
+        billboard.Size = UDim2.new(0, 200, 0, 60)
+        billboard.StudsOffset = Vector3.new(0, 3, 0)
+        billboard.AlwaysOnTop = true
+        billboard.Parent = Workspace
+
+        local infoLabel = Instance.new("TextLabel")
+        infoLabel.Size = UDim2.new(1, 0, 1, 0)
+        infoLabel.BackgroundTransparency = 0.7
+        infoLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+        infoLabel.Text = ""
+        infoLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        infoLabel.TextSize = 12
+        infoLabel.Font = Enum.Font.GothamBold
+        infoLabel.Parent = billboard
+
+        Visuals.ESP.Players[targetPlayer] = {
+            Box = box,
+            Billboard = billboard,
+            InfoLabel = infoLabel
+        }
+    end
+    
+    -- Обновляем информацию
+    local espData = Visuals.ESP.Players[targetPlayer]
+    if espData then
+        espData.Box.Visible = true
+        espData.Billboard.Enabled = true
         
+        local infoText = ""
         if Visuals.ESP.ShowName then
             infoText = targetPlayer.Name .. "\n"
         end
-        
-        if Visuals.ESP.ShowDistance and player.Character:FindFirstChild("HumanoidRootPart") then
-            local distance = (rootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude
-            infoText = infoText .. "Distance: " .. math.floor(distance) .. " studs\n"
+        if Visuals.ESP.ShowDistance then
+            infoText = infoText .. math.floor(data.Distance) .. " studs\n"
+        end
+        if Visuals.ESP.ShowHealth and data.Humanoid then
+            local healthPercent = data.Humanoid.Health / data.Humanoid.MaxHealth
+            local healthColor = healthPercent > 0.7 and "🟢" or healthPercent > 0.3 and "🟡" or "🔴"
+            infoText = infoText .. healthColor .. " " .. math.floor(data.Humanoid.Health)
         end
         
-        if Visuals.ESP.ShowHealth and humanoid then
-            infoText = infoText .. "Health: " .. math.floor(humanoid.Health) .. "/" .. math.floor(humanoid.MaxHealth)
+        espData.InfoLabel.Text = infoText
+        
+        -- Обновляем позицию ESP если персонаж изменился
+        if espData.Box.Adornee ~= data.RootPart then
+            espData.Box.Adornee = data.RootPart
         end
-
-        infoLabel.Text = infoText
-    end)
+        if espData.Billboard.Adornee ~= data.Head then
+            espData.Billboard.Adornee = data.Head
+        end
+    end
 end
 
 local function removeESP(targetPlayer)
@@ -125,20 +158,17 @@ end
 
 local function toggleESP()
     if Visuals.ESP.Enabled then
-        -- Включаем ESP для всех игроков
         for _, otherPlayer in pairs(Players:GetPlayers()) do
             if otherPlayer ~= player then
-                if otherPlayer.Character then
-                    createESP(otherPlayer)
-                end
-                otherPlayer.CharacterAdded:Connect(function()
-                    wait(1)
-                    createESP(otherPlayer)
+                spawn(function()
+                    while Visuals.ESP.Enabled and otherPlayer.Parent do
+                        updateESP(otherPlayer)
+                        wait(0.1)
+                    end
                 end)
             end
         end
     else
-        -- Выключаем ESP для всех игроков
         for targetPlayer, _ in pairs(Visuals.ESP.Players) do
             removeESP(targetPlayer)
         end
@@ -146,55 +176,55 @@ local function toggleESP()
 end
 
 -- Функции Tracers
-local function createTracer(targetPlayer)
+local function updateTracer(targetPlayer)
     if not Visuals.Tracers.Enabled then return end
-    if targetPlayer == player then return end
     
-    local tracer = Instance.new("Frame")
-    tracer.Name = targetPlayer.Name .. "_TRACER"
-    tracer.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-    tracer.BorderSizePixel = 0
-    tracer.Size = UDim2.new(0, 2, 0, 100)
-    tracer.AnchorPoint = Vector2.new(0.5, 0)
-    tracer.Visible = false
-    tracer.Parent = CoreGui
-
-    Visuals.Tracers.Lines[targetPlayer] = tracer
-
-    -- Обновление позиции трассера
-    local connection
-    connection = RunService.Heartbeat:Connect(function()
-        if not Visuals.Tracers.Enabled or not targetPlayer.Character then
-            tracer.Visible = false
-            if connection then
-                connection:Disconnect()
-            end
-            return
+    local data = getPlayerData(targetPlayer)
+    if not data then return end
+    
+    -- Проверяем дистанцию
+    if data.Distance > Visuals.Tracers.MaxDistance then
+        if Visuals.Tracers.Lines[targetPlayer] then
+            Visuals.Tracers.Lines[targetPlayer].Visible = false
         end
+        return
+    end
+    
+    -- Создаем трассер если еще не создан
+    if not Visuals.Tracers.Lines[targetPlayer] then
+        local tracer = Instance.new("Frame")
+        tracer.Name = targetPlayer.Name .. "_TRACER"
+        tracer.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+        tracer.BorderSizePixel = 0
+        tracer.Size = UDim2.new(0, 2, 0, 100)
+        tracer.AnchorPoint = Vector2.new(0.5, 0)
+        tracer.Visible = false
+        tracer.Parent = CoreGui
 
-        local rootPart = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if rootPart and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-            local screenPoint, onScreen = camera:WorldToViewportPoint(rootPart.Position)
+        Visuals.Tracers.Lines[targetPlayer] = tracer
+    end
+    
+    local tracer = Visuals.Tracers.Lines[targetPlayer]
+    if not tracer then return end
+    
+    local screenPoint, onScreen = camera:WorldToViewportPoint(data.RootPart.Position)
+    
+    if onScreen then
+        tracer.Visible = true
+        tracer.Position = UDim2.new(0, screenPoint.X, 0, screenPoint.Y)
+        
+        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local playerScreenPos = camera:WorldToViewportPoint(player.Character.HumanoidRootPart.Position)
+            local delta = Vector2.new(screenPoint.X - playerScreenPos.X, screenPoint.Y - playerScreenPos.Y)
+            local length = math.min(math.sqrt(delta.X * delta.X + delta.Y * delta.Y), 300)
+            local angle = math.atan2(delta.Y, delta.X)
             
-            if onScreen then
-                tracer.Visible = true
-                tracer.Position = UDim2.new(0, screenPoint.X, 0, screenPoint.Y)
-                
-                -- Вычисляем длину и угол
-                local playerScreenPos = camera:WorldToViewportPoint(player.Character.HumanoidRootPart.Position)
-                local delta = Vector2.new(screenPoint.X - playerScreenPos.X, screenPoint.Y - playerScreenPos.Y)
-                local length = math.sqrt(delta.X * delta.X + delta.Y * delta.Y)
-                local angle = math.atan2(delta.Y, delta.X)
-                
-                tracer.Size = UDim2.new(0, 2, 0, length)
-                tracer.Rotation = math.deg(angle) + 90
-            else
-                tracer.Visible = false
-            end
-        else
-            tracer.Visible = false
+            tracer.Size = UDim2.new(0, 2, 0, length)
+            tracer.Rotation = math.deg(angle) + 90
         end
-    end)
+    else
+        tracer.Visible = false
+    end
 end
 
 local function removeTracer(targetPlayer)
@@ -208,7 +238,12 @@ local function toggleTracers()
     if Visuals.Tracers.Enabled then
         for _, otherPlayer in pairs(Players:GetPlayers()) do
             if otherPlayer ~= player then
-                createTracer(otherPlayer)
+                spawn(function()
+                    while Visuals.Tracers.Enabled and otherPlayer.Parent do
+                        updateTracer(otherPlayer)
+                        wait(0.1)
+                    end
+                end)
             end
         end
     else
@@ -219,35 +254,51 @@ local function toggleTracers()
 end
 
 -- Функции Chams
-local function applyChams(targetPlayer)
+local function updateChams(targetPlayer)
     if not Visuals.Chams.Enabled then return end
-    if targetPlayer == player then return end
-    if not targetPlayer.Character then return end
     
-    for _, part in pairs(targetPlayer.Character:GetChildren()) do
-        if part:IsA("BasePart") then
-            local originalMaterial = part.Material
-            local originalTransparency = part.Transparency
-            
-            part.Material = Enum.Material.ForceField
-            part.Transparency = 0.3
-            
-            Visuals.Chams.Materials[part] = {
-                OriginalMaterial = originalMaterial,
-                OriginalTransparency = originalTransparency
-            }
+    local data = getPlayerData(targetPlayer)
+    if not data then return end
+    
+    -- Проверяем дистанцию
+    if data.Distance > Visuals.Chams.MaxDistance then
+        if Visuals.Chams.Materials[targetPlayer] then
+            for part, original in pairs(Visuals.Chams.Materials[targetPlayer]) do
+                if part and part.Parent then
+                    part.Material = original.Material
+                    part.Transparency = original.Transparency
+                end
+            end
+            Visuals.Chams.Materials[targetPlayer] = nil
+        end
+        return
+    end
+    
+    -- Применяем Chams если еще не применены
+    if not Visuals.Chams.Materials[targetPlayer] then
+        Visuals.Chams.Materials[targetPlayer] = {}
+        for _, part in pairs(data.Character:GetChildren()) do
+            if part:IsA("BasePart") then
+                Visuals.Chams.Materials[targetPlayer][part] = {
+                    Material = part.Material,
+                    Transparency = part.Transparency
+                }
+                part.Material = Enum.Material.ForceField
+                part.Transparency = 0.3
+            end
         end
     end
 end
 
 local function removeChams(targetPlayer)
-    if not targetPlayer.Character then return end
-    
-    for part, materials in pairs(Visuals.Chams.Materials) do
-        if part and part.Parent then
-            part.Material = materials.OriginalMaterial
-            part.Transparency = materials.OriginalTransparency
+    if Visuals.Chams.Materials[targetPlayer] then
+        for part, original in pairs(Visuals.Chams.Materials[targetPlayer]) do
+            if part and part.Parent then
+                part.Material = original.Material
+                part.Transparency = original.Transparency
+            end
         end
+        Visuals.Chams.Materials[targetPlayer] = nil
     end
 end
 
@@ -255,38 +306,59 @@ local function toggleChams()
     if Visuals.Chams.Enabled then
         for _, otherPlayer in pairs(Players:GetPlayers()) do
             if otherPlayer ~= player then
-                applyChams(otherPlayer)
+                spawn(function()
+                    while Visuals.Chams.Enabled and otherPlayer.Parent do
+                        updateChams(otherPlayer)
+                        wait(0.5) -- Chams не нужно обновлять так часто
+                    end
+                end)
             end
         end
     else
-        for targetPlayer, _ in pairs(Players:GetPlayers()) do
-            if targetPlayer ~= player then
-                removeChams(targetPlayer)
-            end
+        for targetPlayer, _ in pairs(Visuals.Chams.Materials) do
+            removeChams(targetPlayer)
         end
     end
 end
 
 -- Функции Box ESP
-local function createBox(targetPlayer)
+local function updateBox(targetPlayer)
     if not Visuals.Boxes.Enabled then return end
-    if targetPlayer == player then return end
-    if not targetPlayer.Character then return end
     
-    local rootPart = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not rootPart then return end
+    local data = getPlayerData(targetPlayer)
+    if not data then return end
+    
+    -- Проверяем дистанцию
+    if data.Distance > Visuals.Boxes.MaxDistance then
+        if Visuals.Boxes.Boxes[targetPlayer] then
+            Visuals.Boxes.Boxes[targetPlayer].Visible = false
+        end
+        return
+    end
+    
+    -- Создаем бокс если еще не создан
+    if not Visuals.Boxes.Boxes[targetPlayer] then
+        local box = Instance.new("BoxHandleAdornment")
+        box.Name = targetPlayer.Name .. "_BOX"
+        box.Adornee = data.RootPart
+        box.AlwaysOnTop = true
+        box.ZIndex = 0
+        box.Size = data.RootPart.Size + Vector3.new(0.2, 0.2, 0.2)
+        box.Transparency = 0.7
+        box.Color3 = Color3.fromRGB(0, 255, 0)
+        box.Parent = Workspace
 
-    local box = Instance.new("BoxHandleAdornment")
-    box.Name = targetPlayer.Name .. "_BOX"
-    box.Adornee = rootPart
-    box.AlwaysOnTop = true
-    box.ZIndex = 0
-    box.Size = rootPart.Size + Vector3.new(0.2, 0.2, 0.2)
-    box.Transparency = 0.7
-    box.Color3 = Color3.fromRGB(0, 255, 0)
-    box.Parent = Workspace
-
-    Visuals.Boxes.Boxes[targetPlayer] = box
+        Visuals.Boxes.Boxes[targetPlayer] = box
+    end
+    
+    local box = Visuals.Boxes.Boxes[targetPlayer]
+    if box then
+        box.Visible = true
+        -- Обновляем позицию бокса если персонаж изменился
+        if box.Adornee ~= data.RootPart then
+            box.Adornee = data.RootPart
+        end
+    end
 end
 
 local function removeBox(targetPlayer)
@@ -300,7 +372,12 @@ local function toggleBoxes()
     if Visuals.Boxes.Enabled then
         for _, otherPlayer in pairs(Players:GetPlayers()) do
             if otherPlayer ~= player then
-                createBox(otherPlayer)
+                spawn(function()
+                    while Visuals.Boxes.Enabled and otherPlayer.Parent do
+                        updateBox(otherPlayer)
+                        wait(0.1)
+                    end
+                end)
             end
         end
     else
@@ -313,27 +390,35 @@ end
 -- Обработчики игроков
 Players.PlayerAdded:Connect(function(newPlayer)
     if Visuals.ESP.Enabled then
-        newPlayer.CharacterAdded:Connect(function()
-            wait(1)
-            createESP(newPlayer)
+        spawn(function()
+            while Visuals.ESP.Enabled and newPlayer.Parent do
+                updateESP(newPlayer)
+                wait(0.1)
+            end
         end)
     end
     if Visuals.Tracers.Enabled then
-        newPlayer.CharacterAdded:Connect(function()
-            wait(1)
-            createTracer(newPlayer)
+        spawn(function()
+            while Visuals.Tracers.Enabled and newPlayer.Parent do
+                updateTracer(newPlayer)
+                wait(0.1)
+            end
         end)
     end
     if Visuals.Chams.Enabled then
-        newPlayer.CharacterAdded:Connect(function()
-            wait(1)
-            applyChams(newPlayer)
+        spawn(function()
+            while Visuals.Chams.Enabled and newPlayer.Parent do
+                updateChams(newPlayer)
+                wait(0.5)
+            end
         end)
     end
     if Visuals.Boxes.Enabled then
-        newPlayer.CharacterAdded:Connect(function()
-            wait(1)
-            createBox(newPlayer)
+        spawn(function()
+            while Visuals.Boxes.Enabled and newPlayer.Parent do
+                updateBox(newPlayer)
+                wait(0.1)
+            end
         end)
     end
 end)
@@ -476,7 +561,6 @@ local function createGigasikDLC()
             -- Анимация перехода
             for name, frame in pairs(tabFrames) do
                 if name == tabName then
-                    -- Показываем новую вкладку
                     TweenService:Create(frame.button, TweenInfo.new(0.2), {
                         BackgroundColor3 = tabColors[name],
                         TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -486,7 +570,6 @@ local function createGigasikDLC()
                         Position = UDim2.new(0, 0, 0, 0)
                     }):Play()
                 else
-                    -- Скрываем старые вкладки
                     TweenService:Create(frame.button, TweenInfo.new(0.2), {
                         BackgroundColor3 = Color3.fromRGB(40, 40, 60),
                         TextColor3 = Color3.fromRGB(180, 180, 180)
@@ -525,7 +608,6 @@ local function createGigasikDLC()
         button.Size = UDim2.new(1, 0, 0, 35)
         button.Position = UDim2.new(0, 0, 0, yPosition)
         
-        -- Определяем цвет кнопки в зависимости от состояния
         local isEnabled
         if feature.value then
             isEnabled = Visuals[feature.setting][feature.value]
@@ -547,11 +629,9 @@ local function createGigasikDLC()
 
         button.MouseButton1Click:Connect(function()
             if feature.value then
-                -- Для настроек (Show Name, Distance, Health)
                 Visuals[feature.setting][feature.value] = not Visuals[feature.setting][feature.value]
                 button.BackgroundColor3 = Visuals[feature.setting][feature.value] and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(50, 50, 70)
             else
-                -- Для основных функций (ESP, Tracers и т.д.)
                 Visuals[feature.setting].Enabled = not Visuals[feature.setting].Enabled
                 button.BackgroundColor3 = Visuals[feature.setting].Enabled and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(50, 50, 70)
                 
@@ -672,20 +752,39 @@ local menu = createGigasikDLC()
 -- Инициализация визуалов для существующих игроков
 for _, otherPlayer in pairs(Players:GetPlayers()) do
     if otherPlayer ~= player then
-        if otherPlayer.Character then
-            if Visuals.ESP.Enabled then createESP(otherPlayer) end
-            if Visuals.Tracers.Enabled then createTracer(otherPlayer) end
-            if Visuals.Chams.Enabled then applyChams(otherPlayer) end
-            if Visuals.Boxes.Enabled then createBox(otherPlayer) end
+        if Visuals.ESP.Enabled then
+            spawn(function()
+                while Visuals.ESP.Enabled and otherPlayer.Parent do
+                    updateESP(otherPlayer)
+                    wait(0.1)
+                end
+            end)
         end
-        otherPlayer.CharacterAdded:Connect(function()
-            wait(1)
-            if Visuals.ESP.Enabled then createESP(otherPlayer) end
-            if Visuals.Tracers.Enabled then createTracer(otherPlayer) end
-            if Visuals.Chams.Enabled then applyChams(otherPlayer) end
-            if Visuals.Boxes.Enabled then createBox(otherPlayer) end
-        end)
+        if Visuals.Tracers.Enabled then
+            spawn(function()
+                while Visuals.Tracers.Enabled and otherPlayer.Parent do
+                    updateTracer(otherPlayer)
+                    wait(0.1)
+                end
+            end)
+        end
+        if Visuals.Chams.Enabled then
+            spawn(function()
+                while Visuals.Chams.Enabled and otherPlayer.Parent do
+                    updateChams(otherPlayer)
+                    wait(0.5)
+                end
+            end)
+        end
+        if Visuals.Boxes.Enabled then
+            spawn(function()
+                while Visuals.Boxes.Enabled and otherPlayer.Parent do
+                    updateBox(otherPlayer)
+                    wait(0.1)
+                end
+            end)
+        end
     end
 end
 
-print("gigasikDLC LOADED! All visuals are working!")
+print("gigasikDLC LOADED! Visuals working with distance limit!")
