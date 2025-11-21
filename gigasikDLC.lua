@@ -1,4 +1,4 @@
--- FUES v3.0
+-- Premium Mobile Menu with Full Settings
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
@@ -9,11 +9,12 @@ local Workspace = game:GetService("Workspace")
 local player = Players.LocalPlayer
 local isMobile = UserInputService.TouchEnabled
 
+-- Settings
 local Settings = {
     Menu = {Visible = false},
     BunnyHop = {Enabled = false, Speed = 50},
     Hitbox = {Enabled = false, Size = 6},
-    ESP = {Enabled = false},
+    ESP = {Enabled = false, ShowDistance = true, ShowHealth = true, Color = Color3.fromRGB(255, 50, 50)},
     Fly = {Enabled = false, Speed = 50},
     Speed = {Enabled = false, WalkSpeed = 40},
     ThirdPerson = {Enabled = false, Distance = 10},
@@ -23,11 +24,11 @@ local Settings = {
         Color = Color3.fromRGB(255, 255, 255),
         Rainbow = false,
         Size = 8,
-        Position = 0.55 -- Позиция прицела (0.5 = центр, 0.55 = ниже)
+        Position = 0.55
     }
 }
 
--- Crosshair (ниже центра)
+-- Improved Crosshair (ниже центра)
 local crosshairGui = Instance.new("ScreenGui")
 crosshairGui.Name = "Crosshair"
 crosshairGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
@@ -46,13 +47,20 @@ local crosshairCorner = Instance.new("UICorner")
 crosshairCorner.CornerRadius = UDim.new(1, 0)
 crosshairCorner.Parent = crosshairFrame
 
+-- FIXED Rainbow crosshair effect
 local rainbowConnection
 local function updateCrosshair()
     crosshairFrame.Visible = Settings.Crosshair.Enabled
     
-    if Settings.Crosshair.Rainbow then
+    if Settings.Crosshair.Enabled and Settings.Crosshair.Rainbow then
         if not rainbowConnection then
             rainbowConnection = RunService.Heartbeat:Connect(function()
+                if not Settings.Crosshair.Enabled or not Settings.Crosshair.Rainbow then
+                    rainbowConnection:Disconnect()
+                    rainbowConnection = nil
+                    return
+                end
+                
                 local time = tick()
                 local r = math.sin(time * 2) * 0.5 + 0.5
                 local g = math.sin(time * 2 + 2) * 0.5 + 0.5
@@ -103,7 +111,8 @@ local function bunnyHop()
     end
 end
 
--- Hitbox
+-- IMPROVED Hitbox with auto-update
+local hitboxUpdateConnection
 local function updateHitboxes()
     for _, otherPlayer in pairs(Players:GetPlayers()) do
         if otherPlayer ~= player and otherPlayer.Character then
@@ -113,17 +122,33 @@ local function updateHitboxes()
                     root.Size = Vector3.new(Settings.Hitbox.Size, Settings.Hitbox.Size, Settings.Hitbox.Size)
                     root.Transparency = 0.5
                     root.BrickColor = BrickColor.new("Bright red")
+                    root.Material = Enum.Material.Neon
                 else
                     root.Size = Vector3.new(2, 2, 1)
                     root.Transparency = 1
                     root.BrickColor = BrickColor.new("Medium stone grey")
+                    root.Material = Enum.Material.Plastic
                 end
             end
         end
     end
 end
 
--- ESP
+-- Auto-update hitboxes every 10 seconds
+local function startHitboxAutoUpdate()
+    if hitboxUpdateConnection then
+        hitboxUpdateConnection:Disconnect()
+    end
+    
+    hitboxUpdateConnection = RunService.Heartbeat:Connect(function()
+        if Settings.Hitbox.Enabled then
+            wait(10) -- Wait 10 seconds
+            updateHitboxes()
+        end
+    end)
+end
+
+-- BEAUTIFUL ESP
 local espFolder = Instance.new("Folder")
 espFolder.Name = "JOPAMOD_ESP"
 espFolder.Parent = CoreGui
@@ -134,9 +159,11 @@ local function createESP(targetPlayer)
     local char = targetPlayer.Character
     local root = char:FindFirstChild("HumanoidRootPart")
     local head = char:FindFirstChild("Head")
+    local humanoid = char:FindFirstChild("Humanoid")
     
     if not root or not head then return end
 
+    -- Beautiful Box ESP
     local box = Instance.new("BoxHandleAdornment")
     box.Name = targetPlayer.Name .. "_BOX"
     box.Adornee = root
@@ -144,47 +171,126 @@ local function createESP(targetPlayer)
     box.ZIndex = 1
     box.Size = root.Size + Vector3.new(0.2, 0.2, 0.2)
     box.Transparency = 0.3
-    box.Color3 = Color3.fromRGB(255, 50, 50)
+    box.Color3 = Settings.ESP.Color
     box.Parent = espFolder
 
+    -- Tracer line
+    local tracer = Instance.new("Frame")
+    tracer.Name = targetPlayer.Name .. "_TRACER"
+    tracer.BackgroundColor3 = Settings.ESP.Color
+    tracer.BorderSizePixel = 0
+    tracer.Size = UDim2.new(0, 2, 0, 200)
+    tracer.AnchorPoint = Vector2.new(0.5, 0)
+    tracer.Parent = espFolder
+
+    -- Beautiful Tag
     local tag = Instance.new("BillboardGui")
     tag.Name = targetPlayer.Name .. "_TAG"
     tag.Adornee = head
-    tag.Size = UDim2.new(0, 200, 0, 50)
-    tag.StudsOffset = Vector3.new(0, 3, 0)
+    tag.Size = UDim2.new(0, 200, 0, 80)
+    tag.StudsOffset = Vector3.new(0, 3.5, 0)
     tag.AlwaysOnTop = true
     tag.Parent = espFolder
 
+    local tagBackground = Instance.new("Frame")
+    tagBackground.Size = UDim2.new(1, 0, 1, 0)
+    tagBackground.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    tagBackground.BackgroundTransparency = 0.3
+    tagBackground.BorderSizePixel = 0
+    tagBackground.Parent = tag
+
+    local tagCorner = Instance.new("UICorner")
+    tagCorner.CornerRadius = UDim.new(0.1, 0)
+    tagCorner.Parent = tagBackground
+
     local nameLabel = Instance.new("TextLabel")
-    nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
+    nameLabel.Size = UDim2.new(1, -10, 0, 20)
+    nameLabel.Position = UDim2.new(0, 5, 0, 5)
     nameLabel.BackgroundTransparency = 1
-    nameLabel.Text = targetPlayer.Name
+    nameLabel.Text = "👤 " .. targetPlayer.Name
     nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     nameLabel.TextStrokeTransparency = 0
     nameLabel.TextSize = 14
     nameLabel.Font = Enum.Font.GothamBold
+    nameLabel.TextXAlignment = Enum.TextXAlignment.Left
     nameLabel.Parent = tag
 
     local distLabel = Instance.new("TextLabel")
-    distLabel.Size = UDim2.new(1, 0, 0.5, 0)
-    distLabel.Position = UDim2.new(0, 0, 0.5, 0)
+    distLabel.Size = UDim2.new(1, -10, 0, 18)
+    distLabel.Position = UDim2.new(0, 5, 0, 28)
     distLabel.BackgroundTransparency = 1
     distLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
     distLabel.TextStrokeTransparency = 0
     distLabel.TextSize = 12
     distLabel.Font = Enum.Font.Gotham
+    distLabel.TextXAlignment = Enum.TextXAlignment.Left
     distLabel.Parent = tag
 
-    RunService.Heartbeat:Connect(function()
-        if not char or not root then
+    local healthLabel = Instance.new("TextLabel")
+    healthLabel.Size = UDim2.new(1, -10, 0, 18)
+    healthLabel.Position = UDim2.new(0, 5, 0, 48)
+    healthLabel.BackgroundTransparency = 1
+    healthLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+    healthLabel.TextStrokeTransparency = 0
+    healthLabel.TextSize = 12
+    healthLabel.Font = Enum.Font.Gotham
+    healthLabel.TextXAlignment = Enum.TextXAlignment.Left
+    healthLabel.Parent = tag
+
+    -- Update loop for beautiful ESP
+    local espConnection
+    espConnection = RunService.Heartbeat:Connect(function()
+        if not char or not root or not head then
             box:Destroy()
             tag:Destroy()
+            tracer:Destroy()
+            espConnection:Disconnect()
             return
         end
         
+        -- Update box color and size
+        box.Color3 = Settings.ESP.Color
+        box.Size = root.Size + Vector3.new(0.2, 0.2, 0.2)
+        
+        -- Update tracer
         if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-            local dist = (root.Position - player.Character.HumanoidRootPart.Position).Magnitude
-            distLabel.Text = math.floor(dist) .. " studs"
+            local playerRoot = player.Character.HumanoidRootPart
+            local screenPoint, onScreen = Workspace.CurrentCamera:WorldToViewportPoint(root.Position)
+            
+            if onScreen then
+                tracer.Visible = true
+                tracer.Position = UDim2.new(0, screenPoint.X, 0, screenPoint.Y)
+                
+                local distance = (root.Position - playerRoot.Position).Magnitude
+                local length = math.clamp(300 / distance, 20, 200)
+                tracer.Size = UDim2.new(0, 2, 0, length)
+            else
+                tracer.Visible = false
+            end
+            
+            -- Update distance
+            if Settings.ESP.ShowDistance then
+                local dist = (root.Position - playerRoot.Position).Magnitude
+                distLabel.Text = "📏 " .. math.floor(dist) .. " studs"
+            else
+                distLabel.Text = ""
+            end
+        end
+        
+        -- Update health
+        if Settings.ESP.ShowHealth and humanoid then
+            healthLabel.Text = "❤️ " .. math.floor(humanoid.Health) .. "/" .. math.floor(humanoid.MaxHealth)
+            -- Change color based on health
+            local healthPercent = humanoid.Health / humanoid.MaxHealth
+            if healthPercent > 0.7 then
+                healthLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+            elseif healthPercent > 0.3 then
+                healthLabel.TextColor3 = Color3.fromRGB(255, 255, 100)
+            else
+                healthLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+            end
+        else
+            healthLabel.Text = ""
         end
     end)
 end
@@ -422,13 +528,14 @@ local function createMobileMenu()
     content.BorderSizePixel = 0
     content.ScrollBarThickness = 3
     content.ScrollBarImageColor3 = Color3.fromRGB(155, 89, 182)
-    content.CanvasSize = UDim2.new(0, 0, 0, 800)
+    content.CanvasSize = UDim2.new(0, 0, 0, 1000)
     content.Parent = mainFrame
 
     -- Tabs
     local tabs = {
         {name = "🎮 MAIN", color = Color3.fromRGB(52, 152, 219)},
-        {name = "⚙️ SETTINGS", color = Color3.fromRGB(155, 89, 182)}
+        {name = "⚙️ SETTINGS", color = Color3.fromRGB(155, 89, 182)},
+        {name = "🎨 ESP SETTINGS", color = Color3.fromRGB(231, 76, 60)}
     }
 
     local currentTab = "🎮 MAIN"
@@ -442,13 +549,13 @@ local function createMobileMenu()
 
     for i, tab in pairs(tabs) do
         local tabButton = Instance.new("TextButton")
-        tabButton.Size = UDim2.new(0.5, -5, 1, 0)
-        tabButton.Position = UDim2.new((i-1) * 0.5, 0, 0, 0)
+        tabButton.Size = UDim2.new(1/#tabs, -5, 1, 0)
+        tabButton.Position = UDim2.new((i-1) * (1/#tabs), 0, 0, 0)
         tabButton.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
         tabButton.BorderSizePixel = 0
         tabButton.Text = tab.name
         tabButton.TextColor3 = Color3.fromRGB(200, 200, 200)
-        tabButton.TextSize = 12
+        tabButton.TextSize = 10
         tabButton.Font = Enum.Font.GothamBold
         tabButton.Parent = tabContainer
 
@@ -490,8 +597,32 @@ local function createMobileMenu()
         {name = "Hitbox Size", type = "slider", setting = "Hitbox", value = "Size", min = 2, max = 10},
         {name = "3rd Person Dist", type = "slider", setting = "ThirdPerson", value = "Distance", min = 5, max = 20},
         {name = "Crosshair Size", type = "slider", setting = "Crosshair", value = "Size", min = 4, max = 20},
-        {name = "Crosshair Pos", type = "slider", setting = "Crosshair", value = "Position", min = 0.4, max = 0.7, step = 0.01}
+        {name = "Crosshair Pos", type = "slider", setting = "Crosshair", value = "Position", min = 0.4, max = 0.7, step = 0.01},
+        {name = "Crosshair Rainbow", type = "toggle", setting = "Crosshair", value = "Rainbow"}
     }
+
+    -- ESP Settings
+    local espSettings = {
+        {name = "Show Distance", type = "toggle", setting = "ESP", value = "ShowDistance"},
+        {name = "Show Health", type = "toggle", setting = "ESP", value = "ShowHealth"},
+        {name = "ESP Color R", type = "slider", setting = "ESP", value = "ColorR", min = 0, max = 255, updateFunc = function() 
+            Settings.ESP.Color = Color3.fromRGB(Settings.ESP.ColorR or 255, Settings.ESP.ColorG or 50, Settings.ESP.ColorB or 50)
+            toggleESP() 
+        end},
+        {name = "ESP Color G", type = "slider", setting = "ESP", value = "ColorG", min = 0, max = 255, updateFunc = function() 
+            Settings.ESP.Color = Color3.fromRGB(Settings.ESP.ColorR or 255, Settings.ESP.ColorG or 50, Settings.ESP.ColorB or 50)
+            toggleESP() 
+        end},
+        {name = "ESP Color B", type = "slider", setting = "ESP", value = "ColorB", min = 0, max = 255, updateFunc = function() 
+            Settings.ESP.Color = Color3.fromRGB(Settings.ESP.ColorR or 255, Settings.ESP.ColorG or 50, Settings.ESP.ColorB or 50)
+            toggleESP() 
+        end}
+    }
+
+    -- Initialize ESP color settings
+    Settings.ESP.ColorR = 255
+    Settings.ESP.ColorG = 50
+    Settings.ESP.ColorB = 50
 
     local function updateContent()
         for _, child in pairs(content:GetChildren()) do
@@ -527,6 +658,13 @@ local function createMobileMenu()
                         toggleESP()
                     elseif feature.setting == "Hitbox" then
                         updateHitboxes()
+                        if Settings.Hitbox.Enabled then
+                            startHitboxAutoUpdate()
+                        else
+                            if hitboxUpdateConnection then
+                                hitboxUpdateConnection:Disconnect()
+                            end
+                        end
                     elseif feature.setting == "ThirdPerson" then
                         toggleThirdPerson()
                     elseif feature.setting == "Crosshair" then
@@ -556,83 +694,229 @@ local function createMobileMenu()
                 nameLabel.TextXAlignment = Enum.TextXAlignment.Left
                 nameLabel.Parent = settingContainer
 
-                local valueLabel = Instance.new("TextLabel")
-                valueLabel.Size = UDim2.new(0, 60, 0, 20)
-                valueLabel.Position = UDim2.new(1, -60, 0, 0)
-                valueLabel.BackgroundTransparency = 1
-                valueLabel.Text = tostring(Settings[setting.setting][setting.value])
-                valueLabel.TextColor3 = Color3.fromRGB(52, 152, 219)
-                valueLabel.TextSize = 12
-                valueLabel.Font = Enum.Font.GothamBold
-                valueLabel.TextXAlignment = Enum.TextXAlignment.Right
-                valueLabel.Parent = settingContainer
+                if setting.type == "slider" then
+                    local valueLabel = Instance.new("TextLabel")
+                    valueLabel.Size = UDim2.new(0, 60, 0, 20)
+                    valueLabel.Position = UDim2.new(1, -60, 0, 0)
+                    valueLabel.BackgroundTransparency = 1
+                    valueLabel.Text = tostring(Settings[setting.setting][setting.value])
+                    valueLabel.TextColor3 = Color3.fromRGB(52, 152, 219)
+                    valueLabel.TextSize = 12
+                    valueLabel.Font = Enum.Font.GothamBold
+                    valueLabel.TextXAlignment = Enum.TextXAlignment.Right
+                    valueLabel.Parent = settingContainer
 
-                local sliderContainer = Instance.new("Frame")
-                sliderContainer.Size = UDim2.new(1, 0, 0, 20)
-                sliderContainer.Position = UDim2.new(0, 0, 0, 25)
-                sliderContainer.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
-                sliderContainer.BorderSizePixel = 0
-                sliderContainer.Parent = settingContainer
+                    local sliderContainer = Instance.new("Frame")
+                    sliderContainer.Size = UDim2.new(1, 0, 0, 20)
+                    sliderContainer.Position = UDim2.new(0, 0, 0, 25)
+                    sliderContainer.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+                    sliderContainer.BorderSizePixel = 0
+                    sliderContainer.Parent = settingContainer
 
-                local sliderCorner = Instance.new("UICorner")
-                sliderCorner.CornerRadius = UDim.new(0.1, 0)
-                sliderCorner.Parent = sliderContainer
+                    local sliderCorner = Instance.new("UICorner")
+                    sliderCorner.CornerRadius = UDim.new(0.1, 0)
+                    sliderCorner.Parent = sliderContainer
 
-                local currentValue = Settings[setting.setting][setting.value]
-                local normalizedValue = (currentValue - setting.min) / (setting.max - setting.min)
-                
-                local sliderFill = Instance.new("Frame")
-                sliderFill.Size = UDim2.new(normalizedValue, 0, 1, 0)
-                sliderFill.BackgroundColor3 = Color3.fromRGB(52, 152, 219)
-                sliderFill.BorderSizePixel = 0
-                sliderFill.Parent = sliderContainer
-
-                local fillCorner = Instance.new("UICorner")
-                fillCorner.CornerRadius = UDim.new(0.1, 0)
-                fillCorner.Parent = sliderFill
-
-                local function updateSlider(value)
-                    local newValue
-                    if setting.step then
-                        newValue = math.floor((value - setting.min) / setting.step) * setting.step + setting.min
-                    else
-                        newValue = math.floor(value)
-                    end
-                    newValue = math.clamp(newValue, setting.min, setting.max)
+                    local currentValue = Settings[setting.setting][setting.value]
+                    local normalizedValue = (currentValue - setting.min) / (setting.max - setting.min)
                     
-                    Settings[setting.setting][setting.value] = newValue
-                    valueLabel.Text = tostring(newValue)
-                    
-                    local newNormalized = (newValue - setting.min) / (setting.max - setting.min)
-                    sliderFill.Size = UDim2.new(newNormalized, 0, 1, 0)
+                    local sliderFill = Instance.new("Frame")
+                    sliderFill.Size = UDim2.new(normalizedValue, 0, 1, 0)
+                    sliderFill.BackgroundColor3 = Color3.fromRGB(52, 152, 219)
+                    sliderFill.BorderSizePixel = 0
+                    sliderFill.Parent = sliderContainer
 
-                    -- Update functionality
-                    if setting.setting == "Crosshair" and setting.value == "Position" then
-                        updateCrosshair()
-                    elseif setting.setting == "Crosshair" and setting.value == "Size" then
-                        updateCrosshair()
+                    local fillCorner = Instance.new("UICorner")
+                    fillCorner.CornerRadius = UDim.new(0.1, 0)
+                    fillCorner.Parent = sliderFill
+
+                    local function updateSlider(value)
+                        local newValue
+                        if setting.step then
+                            newValue = math.floor((value - setting.min) / setting.step) * setting.step + setting.min
+                        else
+                            newValue = math.floor(value)
+                        end
+                        newValue = math.clamp(newValue, setting.min, setting.max)
+                        
+                        Settings[setting.setting][setting.value] = newValue
+                        valueLabel.Text = tostring(newValue)
+                        
+                        local newNormalized = (newValue - setting.min) / (setting.max - setting.min)
+                        sliderFill.Size = UDim2.new(newNormalized, 0, 1, 0)
+
+                        -- Update functionality
+                        if setting.setting == "Crosshair" and setting.value == "Position" then
+                            updateCrosshair()
+                        elseif setting.setting == "Crosshair" and setting.value == "Size" then
+                            updateCrosshair()
+                        end
                     end
+
+                    sliderContainer.InputBegan:Connect(function(input)
+                        if input.UserInputType == Enum.UserInputType.Touch then
+                            local connection
+                            connection = RunService.Heartbeat:Connect(function()
+                                local mousePos = UserInputService:GetMouseLocation()
+                                local sliderPos = sliderContainer.AbsolutePosition
+                                local sliderSize = sliderContainer.AbsoluteSize
+                                local relativeX = math.clamp((mousePos.X - sliderPos.X) / sliderSize.X, 0, 1)
+                                local newValue = setting.min + relativeX * (setting.max - setting.min)
+                                updateSlider(newValue)
+                            end)
+                            
+                            UserInputService.InputEnded:Connect(function(input)
+                                if input.UserInputType == Enum.UserInputType.Touch then
+                                    connection:Disconnect()
+                                end
+                            end)
+                        end
+                    end)
+                elseif setting.type == "toggle" then
+                    local toggleButton = Instance.new("TextButton")
+                    toggleButton.Size = UDim2.new(0, 60, 0, 25)
+                    toggleButton.Position = UDim2.new(1, -65, 0, 0)
+                    toggleButton.BackgroundColor3 = Settings[setting.setting][setting.value] and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(231, 76, 60)
+                    toggleButton.BorderSizePixel = 0
+                    toggleButton.Text = Settings[setting.setting][setting.value] and "ON" or "OFF"
+                    toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+                    toggleButton.TextSize = 12
+                    toggleButton.Font = Enum.Font.GothamBold
+                    toggleButton.Parent = settingContainer
+
+                    local toggleCorner = Instance.new("UICorner")
+                    toggleCorner.CornerRadius = UDim.new(0.3, 0)
+                    toggleCorner.Parent = toggleButton
+
+                    toggleButton.MouseButton1Click:Connect(function()
+                        Settings[setting.setting][setting.value] = not Settings[setting.setting][setting.value]
+                        toggleButton.BackgroundColor3 = Settings[setting.setting][setting.value] and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(231, 76, 60)
+                        toggleButton.Text = Settings[setting.setting][setting.value] and "ON" or "OFF"
+                        
+                        if setting.setting == "Crosshair" and setting.value == "Rainbow" then
+                            updateCrosshair()
+                        end
+                    end)
                 end
 
-                sliderContainer.InputBegan:Connect(function(input)
-                    if input.UserInputType == Enum.UserInputType.Touch then
-                        local connection
-                        connection = RunService.Heartbeat:Connect(function()
-                            local mousePos = UserInputService:GetMouseLocation()
-                            local sliderPos = sliderContainer.AbsolutePosition
-                            local sliderSize = sliderContainer.AbsoluteSize
-                            local relativeX = math.clamp((mousePos.X - sliderPos.X) / sliderSize.X, 0, 1)
-                            local newValue = setting.min + relativeX * (setting.max - setting.min)
-                            updateSlider(newValue)
-                        end)
+                yPosition = yPosition + 55
+            end
+            content.CanvasSize = UDim2.new(0, 0, 0, yPosition)
+
+        elseif currentTab == "🎨 ESP SETTINGS" then
+            for i, setting in pairs(espSettings) do
+                local settingContainer = Instance.new("Frame")
+                settingContainer.Size = UDim2.new(1, 0, 0, 50)
+                settingContainer.Position = UDim2.new(0, 0, 0, yPosition)
+                settingContainer.BackgroundTransparency = 1
+                settingContainer.Parent = content
+
+                local nameLabel = Instance.new("TextLabel")
+                nameLabel.Size = UDim2.new(1, 0, 0, 20)
+                nameLabel.BackgroundTransparency = 1
+                nameLabel.Text = setting.name
+                nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+                nameLabel.TextSize = 12
+                nameLabel.Font = Enum.Font.Gotham
+                nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+                nameLabel.Parent = settingContainer
+
+                if setting.type == "slider" then
+                    local valueLabel = Instance.new("TextLabel")
+                    valueLabel.Size = UDim2.new(0, 60, 0, 20)
+                    valueLabel.Position = UDim2.new(1, -60, 0, 0)
+                    valueLabel.BackgroundTransparency = 1
+                    valueLabel.Text = tostring(Settings[setting.setting][setting.value] or 0)
+                    valueLabel.TextColor3 = Color3.fromRGB(52, 152, 219)
+                    valueLabel.TextSize = 12
+                    valueLabel.Font = Enum.Font.GothamBold
+                    valueLabel.TextXAlignment = Enum.TextXAlignment.Right
+                    valueLabel.Parent = settingContainer
+
+                    local sliderContainer = Instance.new("Frame")
+                    sliderContainer.Size = UDim2.new(1, 0, 0, 20)
+                    sliderContainer.Position = UDim2.new(0, 0, 0, 25)
+                    sliderContainer.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+                    sliderContainer.BorderSizePixel = 0
+                    sliderContainer.Parent = settingContainer
+
+                    local sliderCorner = Instance.new("UICorner")
+                    sliderCorner.CornerRadius = UDim.new(0.1, 0)
+                    sliderCorner.Parent = sliderContainer
+
+                    local currentValue = Settings[setting.setting][setting.value] or 0
+                    local normalizedValue = (currentValue - setting.min) / (setting.max - setting.min)
+                    
+                    local sliderFill = Instance.new("Frame")
+                    sliderFill.Size = UDim2.new(normalizedValue, 0, 1, 0)
+                    sliderFill.BackgroundColor3 = Color3.fromRGB(setting.value == "ColorR" and 255 or 50, setting.value == "ColorG" and 255 or 50, setting.value == "ColorB" and 255 or 50)
+                    sliderFill.BorderSizePixel = 0
+                    sliderFill.Parent = sliderContainer
+
+                    local fillCorner = Instance.new("UICorner")
+                    fillCorner.CornerRadius = UDim.new(0.1, 0)
+                    fillCorner.Parent = sliderFill
+
+                    local function updateSlider(value)
+                        local newValue = math.floor(value)
+                        newValue = math.clamp(newValue, setting.min, setting.max)
                         
-                        UserInputService.InputEnded:Connect(function(input)
-                            if input.UserInputType == Enum.UserInputType.Touch then
-                                connection:Disconnect()
-                            end
-                        end)
+                        Settings[setting.setting][setting.value] = newValue
+                        valueLabel.Text = tostring(newValue)
+                        
+                        local newNormalized = (newValue - setting.min) / (setting.max - setting.min)
+                        sliderFill.Size = UDim2.new(newNormalized, 0, 1, 0)
+
+                        if setting.updateFunc then
+                            setting.updateFunc()
+                        end
                     end
-                end)
+
+                    sliderContainer.InputBegan:Connect(function(input)
+                        if input.UserInputType == Enum.UserInputType.Touch then
+                            local connection
+                            connection = RunService.Heartbeat:Connect(function()
+                                local mousePos = UserInputService:GetMouseLocation()
+                                local sliderPos = sliderContainer.AbsolutePosition
+                                local sliderSize = sliderContainer.AbsoluteSize
+                                local relativeX = math.clamp((mousePos.X - sliderPos.X) / sliderSize.X, 0, 1)
+                                local newValue = setting.min + relativeX * (setting.max - setting.min)
+                                updateSlider(newValue)
+                            end)
+                            
+                            UserInputService.InputEnded:Connect(function(input)
+                                if input.UserInputType == Enum.UserInputType.Touch then
+                                    connection:Disconnect()
+                                end
+                            end)
+                        end
+                    end)
+                elseif setting.type == "toggle" then
+                    local toggleButton = Instance.new("TextButton")
+                    toggleButton.Size = UDim2.new(0, 60, 0, 25)
+                    toggleButton.Position = UDim2.new(1, -65, 0, 0)
+                    toggleButton.BackgroundColor3 = Settings[setting.setting][setting.value] and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(231, 76, 60)
+                    toggleButton.BorderSizePixel = 0
+                    toggleButton.Text = Settings[setting.setting][setting.value] and "ON" or "OFF"
+                    toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+                    toggleButton.TextSize = 12
+                    toggleButton.Font = Enum.Font.GothamBold
+                    toggleButton.Parent = settingContainer
+
+                    local toggleCorner = Instance.new("UICorner")
+                    toggleCorner.CornerRadius = UDim.new(0.3, 0)
+                    toggleCorner.Parent = toggleButton
+
+                    toggleButton.MouseButton1Click:Connect(function()
+                        Settings[setting.setting][setting.value] = not Settings[setting.setting][setting.value]
+                        toggleButton.BackgroundColor3 = Settings[setting.setting][setting.value] and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(231, 76, 60)
+                        toggleButton.Text = Settings[setting.setting][setting.value] and "ON" or "OFF"
+                        
+                        if setting.setting == "ESP" then
+                            toggleESP()
+                        end
+                    end)
+                end
 
                 yPosition = yPosition + 55
             end
@@ -739,7 +1023,6 @@ RunService.Heartbeat:Connect(function()
         updateFly()
         updateSpeed()
         updateThirdPerson()
-        updateCrosshair()
     end)
 end)
 
@@ -759,6 +1042,7 @@ player.CharacterAdded:Connect(function()
     if Settings.Hitbox.Enabled then
         wait(1)
         updateHitboxes()
+        startHitboxAutoUpdate()
     end
     if Settings.ESP.Enabled then
         wait(1)
@@ -777,9 +1061,14 @@ delay(2, function()
     end
     if Settings.Hitbox.Enabled then
         updateHitboxes()
+        startHitboxAutoUpdate()
     end
     updateCrosshair()
 end)
 
-print("FUES Optimizing Free Version!")
-print("DITGO SOLO")
+print("📱 IMPROVED Mobile Menu Loaded!")
+print("✅ Fixed rainbow crosshair")
+print("✅ Beautiful ESP with health and distance")
+print("✅ Auto-updating hitboxes every 10 seconds")
+print("✅ ESP color customization")
+print("Tap the floating button to open menu")
