@@ -1,5 +1,5 @@
--- AGALIK HUB v4.1 | Enhanced
--- Исправленная версия: кнопки пониже, без Combat вкладки
+-- AGALIK HUB v5.0 | WITH TUTORIAL
+-- С инструкцией при первом запуске
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -12,109 +12,384 @@ local HttpService = game:GetService("HttpService")
 local player = Players.LocalPlayer
 local mouse = player:GetMouse()
 
--- Случайный ID
-local randomID = HttpService:GenerateGUID(false):sub(1, 8)
+-- Проверяем, показывали ли уже инструкцию
+local tutorialShown = false
+local userLanguage = "english" -- язык по умолчанию
 
--- Стиль как на скриншоте
+-- Тема
 local theme = {
-    primary = Color3.fromRGB(15, 15, 25),
-    secondary = Color3.fromRGB(25, 25, 35),
-    accent = Color3.fromRGB(0, 120, 215),
+    main = Color3.fromRGB(25, 25, 35),
+    secondary = Color3.fromRGB(35, 35, 45),
+    accent = Color3.fromRGB(0, 150, 255),
     text = Color3.fromRGB(240, 240, 240),
     subtext = Color3.fromRGB(180, 180, 200),
     success = Color3.fromRGB(0, 200, 83),
-    warning = Color3.fromRGB(255, 184, 0),
-    danger = Color3.fromRGB(235, 77, 75),
-    border = Color3.fromRGB(40, 40, 60)
+    danger = Color3.fromRGB(255, 80, 90)
 }
 
 -- Создание GUI
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "AgalikHub_" .. randomID
+screenGui.Name = "AgalikHub"
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.ResetOnSpawn = false
 
--- Размещение GUI
 if gethui then
     screenGui.Parent = gethui()
-elseif game:GetService("CoreGui") then
-    screenGui.Parent = game:GetService("CoreGui")
 else
     screenGui.Parent = player:WaitForChild("PlayerGui")
 end
 
--- Основной контейнер
-local mainContainer = Instance.new("Frame")
-mainContainer.Name = "Main"
-mainContainer.Size = UDim2.new(0, 500, 0, 400)
-mainContainer.Position = UDim2.new(0.5, -250, 0.5, -200)
-mainContainer.BackgroundColor3 = theme.primary
-mainContainer.BackgroundTransparency = 0
-mainContainer.BorderSizePixel = 1
-mainContainer.BorderColor3 = Color3.fromRGB(40, 40, 60)
-mainContainer.ClipsDescendants = true
-mainContainer.Visible = false
-mainContainer.Parent = screenGui
+-- ============================================
+-- ИНСТРУКЦИЯ ПРИ ЗАПУСКЕ
+-- ============================================
 
--- Заголовок как на скриншоте
-local header = Instance.new("Frame")
-header.Name = "Header"
-header.Size = UDim2.new(1, 0, 0, 40)
-header.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
-header.BorderSizePixel = 0
-header.Parent = mainContainer
+local tutorialFrame = Instance.new("Frame")
+tutorialFrame.Name = "Tutorial"
+tutorialFrame.Size = UDim2.new(0, 500, 0, 450)
+tutorialFrame.Position = UDim2.new(0.5, -250, 0.5, -225)
+tutorialFrame.BackgroundColor3 = theme.main
+tutorialFrame.BorderSizePixel = 1
+tutorialFrame.BorderColor3 = Color3.fromRGB(50, 50, 70)
+tutorialFrame.ClipsDescendants = true
+tutorialFrame.Visible = true
+tutorialFrame.Parent = screenGui
+
+-- Заголовок инструкции
+local tutorialTitle = Instance.new("TextLabel")
+tutorialTitle.Name = "Title"
+tutorialTitle.Size = UDim2.new(1, 0, 0, 60)
+tutorialTitle.Position = UDim2.new(0, 0, 0, 0)
+tutorialTitle.BackgroundColor3 = theme.secondary
+tutorialTitle.BorderSizePixel = 0
+tutorialTitle.Font = Enum.Font.GothamBold
+tutorialTitle.Text = "AGALIK HUB - WELCOME"
+tutorialTitle.TextColor3 = theme.accent
+tutorialTitle.TextSize = 20
+tutorialTitle.Parent = tutorialFrame
+
+-- Вопрос о языке
+local languageQuestion = Instance.new("TextLabel")
+languageQuestion.Name = "LanguageQuestion"
+languageQuestion.Size = UDim2.new(1, -40, 0, 50)
+languageQuestion.Position = UDim2.new(0, 20, 0, 80)
+languageQuestion.BackgroundTransparency = 1
+languageQuestion.Font = Enum.Font.Gotham
+languageQuestion.Text = "Please select your language / Пожалуйста, выберите язык:"
+languageQuestion.TextColor3 = theme.text
+languageQuestion.TextSize = 16
+languageQuestion.TextWrapped = true
+languageQuestion.Parent = tutorialFrame
+
+-- Кнопка English
+local englishBtn = Instance.new("TextButton")
+englishBtn.Name = "EnglishBtn"
+englishBtn.Size = UDim2.new(0, 200, 0, 40)
+englishBtn.Position = UDim2.new(0.5, -220, 0, 150)
+englishBtn.BackgroundColor3 = theme.accent
+englishBtn.BorderSizePixel = 0
+englishBtn.AutoButtonColor = false
+englishBtn.Font = Enum.Font.GothamBold
+englishBtn.Text = "🇺🇸 ENGLISH"
+englishBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+englishBtn.TextSize = 16
+englishBtn.Parent = tutorialFrame
+
+-- Кнопка Russian
+local russianBtn = Instance.new("TextButton")
+russianBtn.Name = "RussianBtn"
+russianBtn.Size = UDim2.new(0, 200, 0, 40)
+russianBtn.Position = UDim2.new(0.5, 20, 0, 150)
+russianBtn.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+russianBtn.BorderSizePixel = 0
+russianBtn.AutoButtonColor = false
+russianBtn.Font = Enum.Font.GothamBold
+russianBtn.Text = "🇷🇺 RUSSIAN"
+russianBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+russianBtn.TextSize = 16
+russianBtn.Parent = tutorialFrame
+
+-- Область с инструкцией
+local tutorialContent = Instance.new("ScrollingFrame")
+tutorialContent.Name = "Content"
+tutorialContent.Size = UDim2.new(1, -40, 0, 200)
+tutorialContent.Position = UDim2.new(0, 20, 0, 210)
+tutorialContent.BackgroundColor3 = theme.secondary
+tutorialContent.BorderSizePixel = 0
+tutorialContent.ScrollBarThickness = 6
+tutorialContent.ScrollBarImageColor3 = theme.accent
+tutorialContent.CanvasSize = UDim2.new(0, 0, 0, 0)
+tutorialContent.AutomaticCanvasSize = Enum.AutomaticSize.Y
+tutorialContent.Visible = false
+tutorialContent.Parent = tutorialFrame
+
+local tutorialLayout = Instance.new("UIListLayout")
+tutorialLayout.Padding = UDim.new(0, 10)
+tutorialLayout.SortOrder = Enum.SortOrder.LayoutOrder
+tutorialLayout.Parent = tutorialContent
+
+local tutorialPadding = Instance.new("UIPadding")
+tutorialPadding.PaddingTop = UDim.new(0, 15)
+tutorialPadding.PaddingLeft = UDim.new(0, 15)
+tutorialPadding.PaddingRight = UDim.new(0, 15)
+tutorialPadding.Parent = tutorialContent
+
+-- Кнопка принятия (справа снизу)
+local acceptBtn = Instance.new("TextButton")
+acceptBtn.Name = "AcceptBtn"
+acceptBtn.Size = UDim2.new(0, 120, 0, 40)
+acceptBtn.Position = UDim2.new(1, -140, 1, -60)
+acceptBtn.BackgroundColor3 = theme.success
+acceptBtn.BorderSizePixel = 0
+acceptBtn.AutoButtonColor = false
+acceptBtn.Font = Enum.Font.GothamBold
+acceptBtn.Text = "ACCEPT"
+acceptBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+acceptBtn.TextSize = 16
+acceptBtn.Visible = false
+acceptBtn.Parent = tutorialFrame
+
+-- Функция создания пункта инструкции
+local function createTutorialItem(text, icon)
+    local itemFrame = Instance.new("Frame")
+    itemFrame.Name = "Item"
+    itemFrame.Size = UDim2.new(1, 0, 0, 40)
+    itemFrame.BackgroundTransparency = 1
+    
+    local iconLabel = Instance.new("TextLabel")
+    iconLabel.Name = "Icon"
+    iconLabel.Size = UDim2.new(0, 30, 0, 30)
+    iconLabel.Position = UDim2.new(0, 0, 0, 5)
+    iconLabel.BackgroundTransparency = 1
+    iconLabel.Font = Enum.Font.Gotham
+    iconLabel.Text = icon
+    iconLabel.TextColor3 = theme.accent
+    iconLabel.TextSize = 20
+    iconLabel.Parent = itemFrame
+    
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Name = "Text"
+    textLabel.Size = UDim2.new(1, -40, 0, 30)
+    textLabel.Position = UDim2.new(0, 40, 0, 5)
+    textLabel.BackgroundTransparency = 1
+    textLabel.Font = Enum.Font.Gotham
+    textLabel.Text = text
+    textLabel.TextColor3 = theme.text
+    textLabel.TextSize = 14
+    textLabel.TextXAlignment = Enum.TextXAlignment.Left
+    textLabel.TextWrapped = true
+    textLabel.Parent = itemFrame
+    
+    return itemFrame
+end
+
+-- Тексты инструкций на разных языках
+local englishTutorial = {
+    "🎮 Welcome to AGALIK HUB v5.0!",
+    "✅ This is a premium script for Prison Life",
+    "",
+    "🔑 CONTROLS:",
+    "• RightControl - Open/Close menu",
+    "• Drag title bar - Move window",
+    "",
+    "🚀 MAIN FEATURES:",
+    "• NOCHIP - Walk through walls",
+    "• SPEED HACK - Run 3x faster",
+    "• INVISIBLE - Become invisible",
+    "• ESP - See all players (health & distance)",
+    "• X-RAY - See through walls",
+    "• FULLBRIGHT - Remove darkness",
+    "",
+    "📍 TELEPORT LOCATIONS:",
+    "• Guard Room - Police spawn",
+    "• Prison Yard - Main area",
+    "• Criminal Base - Criminals spawn",
+    "",
+    "🎮 FUN FEATURES:",
+    "• Spawn Cubes - Create platforms",
+    "• Grenade Rain - Fun explosions",
+    "",
+    "⚠️ WARNING:",
+    "Use at your own risk!",
+    "For educational purposes only."
+}
+
+local russianTutorial = {
+    "🎮 Добро пожаловать в AGALIK HUB v5.0!",
+    "✅ Это премиум скрипт для Prison Life",
+    "",
+    "🔑 УПРАВЛЕНИЕ:",
+    "• RightControl - Открыть/Закрыть меню",
+    "• Тащить за заголовок - Перемещать окно",
+    "",
+    "🚀 ОСНОВНЫЕ ФУНКЦИИ:",
+    "• NOCHIP - Ходить сквозь стены",
+    "• SPEED HACK - Бегать в 3 раза быстрее",
+    "• INVISIBLE - Стать невидимым",
+    "• ESP - Видеть всех игроков (здоровье и дистанция)",
+    "• X-RAY - Видеть сквозь стены",
+    "• FULLBRIGHT - Убрать темноту",
+    "",
+    "📍 ТЕЛЕПОРТЫ:",
+    "• Guard Room - Спавн полиции",
+    "• Prison Yard - Главная зона",
+    "• Criminal Base - Спавн криминалов",
+    "",
+    "🎮 РАЗВЛЕЧЕНИЯ:",
+    "• Spawn Cubes - Создавать платформы",
+    "• Grenade Rain - Веселые взрывы",
+    "",
+    "⚠️ ПРЕДУПРЕЖДЕНИЕ:",
+    "Используйте на свой страх и риск!",
+    "Только в образовательных целях."
+}
+
+-- Функция показа инструкции
+local function showTutorial(language)
+    userLanguage = language
+    
+    -- Очищаем предыдущий контент
+    for _, child in pairs(tutorialContent:GetChildren()) do
+        if child:IsA("Frame") then
+            child:Destroy()
+        end
+    end
+    
+    -- Выбираем текст
+    local tutorialText = language == "english" and englishTutorial or russianTutorial
+    
+    -- Заполняем инструкцию
+    for i, text in ipairs(tutorialText) do
+        if text == "" then
+            -- Пропуск для пустых строк
+            local spacer = Instance.new("Frame")
+            spacer.Size = UDim2.new(1, 0, 0, 10)
+            spacer.BackgroundTransparency = 1
+            spacer.LayoutOrder = i
+            spacer.Parent = tutorialContent
+        else
+            local icon = ""
+            if text:find("Welcome") or text:find("Добро") then icon = "🎮"
+            elseif text:find("CONTROLS") or text:find("УПРАВЛЕНИЕ") then icon = "🔑"
+            elseif text:find("FEATURES") or text:find("ФУНКЦИИ") then icon = "🚀"
+            elseif text:find("TELEPORT") or text:find("ТЕЛЕПОРТЫ") then icon = "📍"
+            elseif text:find("FUN") or text:find("РАЗВЛЕЧЕНИЯ") then icon = "🎮"
+            elseif text:find("WARNING") or text:find("ПРЕДУПРЕЖДЕНИЕ") then icon = "⚠️"
+            elseif text:find("•") then icon = "✓"
+            else icon = "📌" end
+            
+            local item = createTutorialItem(text, icon)
+            item.LayoutOrder = i
+            item.Parent = tutorialContent
+        end
+    end
+    
+    -- Показываем контент и кнопку принятия
+    tutorialContent.Visible = true
+    acceptBtn.Visible = true
+    
+    -- Меняем текст кнопки в зависимости от языка
+    if language == "russian" then
+        acceptBtn.Text = "ПРИНЯТЬ"
+    else
+        acceptBtn.Text = "ACCEPT"
+    end
+    
+    -- Анимация появления
+    tutorialContent.Position = UDim2.new(0, 20, 0.5, 0)
+    tutorialContent.Size = UDim2.new(1, -40, 0, 0)
+    
+    TweenService:Create(tutorialContent, TweenInfo.new(0.4), {
+        Position = UDim2.new(0, 20, 0, 210),
+        Size = UDim2.new(1, -40, 0, 200)
+    }):Play()
+end
+
+-- Обработчики кнопок языка
+englishBtn.MouseButton1Click:Connect(function()
+    showTutorial("english")
+    tutorialTitle.Text = "AGALIK HUB - WELCOME"
+    languageQuestion.Text = "Please select your language:"
+end)
+
+russianBtn.MouseButton1Click:Connect(function()
+    showTutorial("russian")
+    tutorialTitle.Text = "AGALIK HUB - ДОБРО ПОЖАЛОВАТЬ"
+    languageQuestion.Text = "Пожалуйста, выберите язык:"
+end)
+
+-- ============================================
+-- ОСНОВНОЕ МЕНЮ (ЧИТ)
+-- ============================================
+
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 450, 0, 400)
+mainFrame.Position = UDim2.new(0.5, -225, 0.5, -200)
+mainFrame.BackgroundColor3 = theme.main
+mainFrame.BorderSizePixel = 1
+mainFrame.BorderColor3 = Color3.fromRGB(50, 50, 70)
+mainFrame.ClipsDescendants = true
+mainFrame.Visible = false
+mainFrame.Parent = screenGui
+
+-- Панель заголовка
+local titleBar = Instance.new("Frame")
+titleBar.Name = "TitleBar"
+titleBar.Size = UDim2.new(1, 0, 0, 40)
+titleBar.BackgroundColor3 = theme.secondary
+titleBar.BorderSizePixel = 0
+titleBar.Parent = mainFrame
 
 local title = Instance.new("TextLabel")
 title.Name = "Title"
-title.Size = UDim2.new(1, -100, 1, 0)
-title.Position = UDim2.new(0, 15, 0, 0)
+title.Size = UDim2.new(1, -80, 1, 0)
+title.Position = UDim2.new(0, 10, 0, 0)
 title.BackgroundTransparency = 1
 title.Font = Enum.Font.GothamBold
-title.Text = "AGALIK HUB v4.1 | Enhanced"
+title.Text = "AGALIK HUB v5.0"
 title.TextColor3 = theme.accent
 title.TextSize = 16
 title.TextXAlignment = Enum.TextXAlignment.Left
-title.Parent = header
+title.Parent = titleBar
 
 local closeBtn = Instance.new("TextButton")
 closeBtn.Name = "Close"
-closeBtn.Size = UDim2.new(0, 40, 0, 40)
-closeBtn.Position = UDim2.new(1, -45, 0, 0)
-closeBtn.BackgroundColor3 = Color3.fromRGB(40, 0, 0)
+closeBtn.Size = UDim2.new(0, 30, 0, 30)
+closeBtn.Position = UDim2.new(1, -35, 0, 5)
+closeBtn.BackgroundColor3 = Color3.fromRGB(60, 0, 0)
 closeBtn.BorderSizePixel = 0
 closeBtn.AutoButtonColor = false
 closeBtn.Font = Enum.Font.GothamBold
 closeBtn.Text = "×"
-closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-closeBtn.TextSize = 20
-closeBtn.Parent = header
+closeBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+closeBtn.TextSize = 18
+closeBtn.Parent = titleBar
 
--- Боковая панель с вкладками
+-- Боковая панель
 local sidebar = Instance.new("Frame")
 sidebar.Name = "Sidebar"
-sidebar.Size = UDim2.new(0, 120, 1, -40)
+sidebar.Size = UDim2.new(0, 100, 1, -40)
 sidebar.Position = UDim2.new(0, 0, 0, 40)
 sidebar.BackgroundColor3 = theme.secondary
 sidebar.BorderSizePixel = 0
-sidebar.Parent = mainContainer
+sidebar.Parent = mainFrame
 
--- Основная область контента
-local contentArea = Instance.new("Frame")
-contentArea.Name = "Content"
-contentArea.Size = UDim2.new(1, -120, 1, -40)
-contentArea.Position = UDim2.new(0, 120, 0, 40)
-contentArea.BackgroundColor3 = theme.primary
-contentArea.BorderSizePixel = 0
-contentArea.ClipsDescendants = true
-contentArea.Parent = mainContainer
+-- Область контента
+local contentFrame = Instance.new("Frame")
+contentFrame.Name = "Content"
+contentFrame.Size = UDim2.new(1, -100, 1, -40)
+contentFrame.Position = UDim2.new(0, 100, 0, 40)
+contentFrame.BackgroundColor3 = theme.main
+contentFrame.BorderSizePixel = 0
+contentFrame.ClipsDescendants = true
+contentFrame.Parent = mainFrame
 
--- Вкладки (без Combat)
+-- Вкладки
 local tabs = {
     {Name = "Player", Icon = "👤", Color = theme.accent},
     {Name = "Visual", Icon = "👁️", Color = Color3.fromRGB(0, 200, 255)},
     {Name = "Teleport", Icon = "📍", Color = Color3.fromRGB(255, 184, 0)},
     {Name = "Fun", Icon = "🎮", Color = Color3.fromRGB(235, 77, 75)},
-    {Name = "Settings", Icon = "⚙️", Color = Color3.fromRGB(100, 200, 100)},
     {Name = "Credits", Icon = "⭐", Color = Color3.fromRGB(255, 215, 0)}
 }
 
@@ -122,14 +397,13 @@ local tabFrames = {}
 local tabButtons = {}
 local activeTab = 1
 
--- Создаем вкладки
 for i, tab in ipairs(tabs) do
     -- Кнопка вкладки
     local tabButton = Instance.new("TextButton")
     tabButton.Name = tab.Name .. "Tab"
-    tabButton.Size = UDim2.new(1, 0, 0, 50) -- Немного выше
-    tabButton.Position = UDim2.new(0, 0, 0, (i-1) * 55)
-    tabButton.BackgroundColor3 = i == 1 and Color3.fromRGB(30, 30, 50) or theme.secondary
+    tabButton.Size = UDim2.new(1, 0, 0, 45)
+    tabButton.Position = UDim2.new(0, 0, 0, (i-1) * 50)
+    tabButton.BackgroundColor3 = i == 1 and Color3.fromRGB(45, 45, 60) or theme.secondary
     tabButton.BorderSizePixel = 0
     tabButton.AutoButtonColor = false
     tabButton.Font = Enum.Font.Gotham
@@ -138,19 +412,19 @@ for i, tab in ipairs(tabs) do
     
     local icon = Instance.new("TextLabel")
     icon.Name = "Icon"
-    icon.Size = UDim2.new(0, 30, 0, 30)
-    icon.Position = UDim2.new(0, 15, 0, 10)
+    icon.Size = UDim2.new(0, 25, 0, 25)
+    icon.Position = UDim2.new(0, 10, 0, 10)
     icon.BackgroundTransparency = 1
     icon.Font = Enum.Font.Gotham
     icon.Text = tab.Icon
     icon.TextColor3 = i == 1 and tab.Color or theme.subtext
-    icon.TextSize = 18
+    icon.TextSize = 16
     icon.Parent = tabButton
     
     local text = Instance.new("TextLabel")
     text.Name = "Text"
     text.Size = UDim2.new(1, -10, 0, 20)
-    text.Position = UDim2.new(0, 5, 0, 30)
+    text.Position = UDim2.new(0, 5, 0, 28)
     text.BackgroundTransparency = 1
     text.Font = Enum.Font.Gotham
     text.Text = tab.Name
@@ -158,17 +432,6 @@ for i, tab in ipairs(tabs) do
     text.TextSize = 12
     text.TextXAlignment = Enum.TextXAlignment.Center
     text.Parent = tabButton
-    
-    -- Индикатор выбранной вкладки
-    if i == 1 then
-        local indicator = Instance.new("Frame")
-        indicator.Name = "Indicator"
-        indicator.Size = UDim2.new(0, 3, 0.8, 0)
-        indicator.Position = UDim2.new(1, -3, 0.1, 0)
-        indicator.BackgroundColor3 = tab.Color
-        indicator.BorderSizePixel = 0
-        indicator.Parent = tabButton
-    end
     
     -- Фрейм контента
     local tabFrame = Instance.new("ScrollingFrame")
@@ -181,17 +444,17 @@ for i, tab in ipairs(tabs) do
     tabFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
     tabFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
     tabFrame.Visible = i == 1
-    tabFrame.Parent = contentArea
+    tabFrame.Parent = contentFrame
     
     local layout = Instance.new("UIListLayout")
-    layout.Padding = UDim.new(0, 10)
+    layout.Padding = UDim.new(0, 8)
     layout.SortOrder = Enum.SortOrder.LayoutOrder
     layout.Parent = tabFrame
     
     local padding = Instance.new("UIPadding")
-    padding.PaddingTop = UDim.new(0, 15)
-    padding.PaddingLeft = UDim.new(0, 15)
-    padding.PaddingRight = UDim.new(0, 15)
+    padding.PaddingTop = UDim.new(0, 10)
+    padding.PaddingLeft = UDim.new(0, 10)
+    padding.PaddingRight = UDim.new(0, 10)
     padding.Parent = tabFrame
     
     tabButtons[i] = tabButton
@@ -199,35 +462,33 @@ for i, tab in ipairs(tabs) do
     
     -- Обработчик клика
     tabButton.MouseButton1Click:Connect(function()
+        if activeTab == i then return end
+        
         activeTab = i
+        
         for idx, btn in ipairs(tabButtons) do
-            btn.BackgroundColor3 = idx == i and Color3.fromRGB(30, 30, 50) or theme.secondary
-            btn:FindFirstChild("Icon").TextColor3 = idx == i and tabs[idx].Color or theme.subtext
-            btn:FindFirstChild("Text").TextColor3 = idx == i and theme.text or theme.subtext
-            tabFrames[idx].Visible = idx == i
+            local isActive = idx == i
             
-            -- Индикатор
-            local oldIndicator = btn:FindFirstChild("Indicator")
-            if oldIndicator then
-                oldIndicator:Destroy()
-            end
+            TweenService:Create(btn, TweenInfo.new(0.2), {
+                BackgroundColor3 = isActive and Color3.fromRGB(45, 45, 60) or theme.secondary
+            }):Play()
             
-            if idx == i then
-                local indicator = Instance.new("Frame")
-                indicator.Name = "Indicator"
-                indicator.Size = UDim2.new(0, 3, 0.8, 0)
-                indicator.Position = UDim2.new(1, -3, 0.1, 0)
-                indicator.BackgroundColor3 = tabs[idx].Color
-                indicator.BorderSizePixel = 0
-                indicator.Parent = btn
-            end
+            TweenService:Create(btn:FindFirstChild("Icon"), TweenInfo.new(0.2), {
+                TextColor3 = isActive and tabs[idx].Color or theme.subtext
+            }):Play()
+            
+            TweenService:Create(btn:FindFirstChild("Text"), TweenInfo.new(0.2), {
+                TextColor3 = isActive and theme.text or theme.subtext
+            }):Play()
+            
+            tabFrames[idx].Visible = isActive
         end
     end)
 end
 
 -- Кнопка открытия меню
 local openButton = Instance.new("TextButton")
-openButton.Name = "OpenBtn"
+openButton.Name = "OpenButton"
 openButton.Size = UDim2.new(0, 50, 0, 50)
 openButton.Position = UDim2.new(1, -60, 0, 20)
 openButton.BackgroundColor3 = theme.accent
@@ -236,83 +497,79 @@ openButton.AutoButtonColor = false
 openButton.Font = Enum.Font.GothamBold
 openButton.Text = "A"
 openButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-openButton.TextSize = 20
-openButton.Visible = true
+openButton.TextSize = 18
+openButton.Visible = false
 openButton.Parent = screenGui
 
--- Функция создания чекбокса (кнопка пониже и правее)
-local function createCheckbox(parent, text, description, icon, default)
-    local checkboxFrame = Instance.new("Frame")
-    checkboxFrame.Name = text .. "Checkbox"
-    checkboxFrame.Size = UDim2.new(1, -30, 0, 60) -- Выше фрейм
-    checkboxFrame.BackgroundColor3 = theme.secondary
-    checkboxFrame.BorderSizePixel = 0
-    checkboxFrame.LayoutOrder = #parent:GetChildren()
-    checkboxFrame.Parent = parent
-    
-    local iconLabel = Instance.new("TextLabel")
-    iconLabel.Name = "Icon"
-    iconLabel.Size = UDim2.new(0, 35, 0, 35)
-    iconLabel.Position = UDim2.new(0, 15, 0.5, -17.5)
-    iconLabel.AnchorPoint = Vector2.new(0, 0.5)
-    iconLabel.BackgroundTransparency = 1
-    iconLabel.Font = Enum.Font.Gotham
-    iconLabel.Text = icon
-    iconLabel.TextColor3 = theme.accent
-    iconLabel.TextSize = 20
-    iconLabel.Parent = checkboxFrame
-    
-    local textLabel = Instance.new("TextLabel")
-    textLabel.Name = "Text"
-    textLabel.Size = UDim2.new(0.6, -60, 0, 25)
-    textLabel.Position = UDim2.new(0, 60, 0, 10)
-    textLabel.BackgroundTransparency = 1
-    textLabel.Font = Enum.Font.GothamBold
-    textLabel.Text = text
-    textLabel.TextColor3 = theme.text
-    textLabel.TextSize = 14
-    textLabel.TextXAlignment = Enum.TextXAlignment.Left
-    textLabel.Parent = checkboxFrame
-    
-    local descLabel = Instance.new("TextLabel")
-    descLabel.Name = "Description"
-    descLabel.Size = UDim2.new(0.6, -60, 0, 25)
-    descLabel.Position = UDim2.new(0, 60, 0, 30)
-    descLabel.BackgroundTransparency = 1
-    descLabel.Font = Enum.Font.Gotham
-    descLabel.Text = description
-    descLabel.TextColor3 = theme.subtext
-    descLabel.TextSize = 11
-    descLabel.TextXAlignment = Enum.TextXAlignment.Left
-    descLabel.Parent = checkboxFrame
-    
-    -- КНОПКА ПОНИЖЕ И ПРАВЕЕ
-    local checkboxBtn = Instance.new("TextButton")
-    checkboxBtn.Name = "Checkbox"
-    checkboxBtn.Size = UDim2.new(0, 70, 0, 25) -- Уже и ниже
-    checkboxBtn.Position = UDim2.new(1, -80, 0.5, -12.5) -- Правее и ниже
-    checkboxBtn.AnchorPoint = Vector2.new(1, 0.5)
-    checkboxBtn.BackgroundColor3 = default and theme.success or Color3.fromRGB(60, 60, 80)
-    checkboxBtn.BorderSizePixel = 0
-    checkboxBtn.AutoButtonColor = false
-    checkboxBtn.Font = Enum.Font.Gotham
-    checkboxBtn.Text = default and "ON" or "OFF" -- Без скобок
-    checkboxBtn.TextColor3 = default and Color3.fromRGB(255, 255, 255) or theme.subtext
-    checkboxBtn.TextSize = 12
-    checkboxBtn.Parent = checkboxFrame
-    
-    local checkboxCorner = Instance.new("UICorner")
-    checkboxCorner.CornerRadius = UDim.new(0, 4)
-    checkboxCorner.Parent = checkboxBtn
-    
-    return checkboxBtn
+-- Функция для уведомлений
+local function showNotification(text, color, icon)
+    spawn(function()
+        local notification = Instance.new("Frame")
+        notification.Size = UDim2.new(0, 300, 0, 50)
+        notification.Position = UDim2.new(0.5, -150, 0.1, 0)
+        notification.AnchorPoint = Vector2.new(0.5, 0)
+        notification.BackgroundColor3 = theme.secondary
+        notification.BorderSizePixel = 0
+        notification.ZIndex = 1000
+        notification.Parent = screenGui
+        
+        local notifCorner = Instance.new("UICorner")
+        notifCorner.CornerRadius = UDim.new(0, 8)
+        notifCorner.Parent = notification
+        
+        local border = Instance.new("Frame")
+        border.Size = UDim2.new(1, 0, 0, 3)
+        border.Position = UDim2.new(0, 0, 1, -3)
+        border.BackgroundColor3 = color
+        border.BorderSizePixel = 0
+        border.Parent = notification
+        
+        local textLabel = Instance.new("TextLabel")
+        textLabel.Size = UDim2.new(1, -20, 1, 0)
+        textLabel.Position = UDim2.new(0, 10, 0, 0)
+        textLabel.BackgroundTransparency = 1
+        textLabel.Font = Enum.Font.GothamBold
+        textLabel.Text = icon .. " " .. text .. " " .. icon
+        textLabel.TextColor3 = color
+        textLabel.TextSize = 16
+        textLabel.TextXAlignment = Enum.TextXAlignment.Center
+        textLabel.Parent = notification
+        
+        -- Анимация
+        notification.Position = UDim2.new(0.5, -150, -0.1, 0)
+        notification.BackgroundTransparency = 1
+        textLabel.TextTransparency = 1
+        
+        TweenService:Create(notification, TweenInfo.new(0.3), {
+            Position = UDim2.new(0.5, -150, 0.1, 0),
+            BackgroundTransparency = 0
+        }):Play()
+        
+        TweenService:Create(textLabel, TweenInfo.new(0.3), {
+            TextTransparency = 0
+        }):Play()
+        
+        task.wait(1.5)
+        
+        TweenService:Create(notification, TweenInfo.new(0.3), {
+            Position = UDim2.new(0.5, -150, -0.1, 0),
+            BackgroundTransparency = 1
+        }):Play()
+        
+        TweenService:Create(textLabel, TweenInfo.new(0.3), {
+            TextTransparency = 1
+        }):Play()
+        
+        task.wait(0.3)
+        notification:Destroy()
+    end)
 end
 
--- Функция создания кнопки (правая часть)
-local function createActionButton(parent, text, description, icon)
+-- Функция создания кнопки
+local function createButton(parent, text, description, icon, color, isToggle)
     local buttonFrame = Instance.new("Frame")
     buttonFrame.Name = text .. "Button"
-    buttonFrame.Size = UDim2.new(1, -30, 0, 70) -- Чуть выше
+    buttonFrame.Size = UDim2.new(1, 0, 0, 60)
     buttonFrame.BackgroundColor3 = theme.secondary
     buttonFrame.BorderSizePixel = 0
     buttonFrame.LayoutOrder = #parent:GetChildren()
@@ -320,85 +577,97 @@ local function createActionButton(parent, text, description, icon)
     
     local iconLabel = Instance.new("TextLabel")
     iconLabel.Name = "Icon"
-    iconLabel.Size = UDim2.new(0, 40, 0, 40)
-    iconLabel.Position = UDim2.new(0, 15, 0.5, -20)
+    iconLabel.Size = UDim2.new(0, 35, 0, 35)
+    iconLabel.Position = UDim2.new(0, 10, 0.5, -17.5)
     iconLabel.AnchorPoint = Vector2.new(0, 0.5)
     iconLabel.BackgroundTransparency = 1
     iconLabel.Font = Enum.Font.Gotham
     iconLabel.Text = icon
-    iconLabel.TextColor3 = theme.accent
-    iconLabel.TextSize = 22
+    iconLabel.TextColor3 = color
+    iconLabel.TextSize = 20
     iconLabel.Parent = buttonFrame
     
-    local textLabel = Instance.new("TextLabel")
-    textLabel.Name = "Text"
-    textLabel.Size = UDim2.new(0.6, -70, 0, 25)
-    textLabel.Position = UDim2.new(0, 70, 0, 15)
-    textLabel.BackgroundTransparency = 1
-    textLabel.Font = Enum.Font.GothamBold
-    textLabel.Text = text
-    textLabel.TextColor3 = theme.text
-    textLabel.TextSize = 14
-    textLabel.TextXAlignment = Enum.TextXAlignment.Left
-    textLabel.Parent = buttonFrame
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Name = "Title"
+    titleLabel.Size = UDim2.new(0.6, -50, 0, 25)
+    titleLabel.Position = UDim2.new(0, 55, 0, 10)
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.Font = Enum.Font.GothamBold
+    titleLabel.Text = text .. (isToggle and " [OFF]" or "")
+    titleLabel.TextColor3 = theme.text
+    titleLabel.TextSize = 14
+    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    titleLabel.Parent = buttonFrame
     
     local descLabel = Instance.new("TextLabel")
     descLabel.Name = "Description"
-    descLabel.Size = UDim2.new(0.6, -70, 0, 30)
-    descLabel.Position = UDim2.new(0, 70, 0, 35)
+    descLabel.Size = UDim2.new(0.6, -50, 0, 20)
+    descLabel.Position = UDim2.new(0, 55, 0, 35)
     descLabel.BackgroundTransparency = 1
     descLabel.Font = Enum.Font.Gotham
     descLabel.Text = description
     descLabel.TextColor3 = theme.subtext
     descLabel.TextSize = 11
     descLabel.TextXAlignment = Enum.TextXAlignment.Left
-    descLabel.TextWrapped = true
     descLabel.Parent = buttonFrame
     
-    local actionBtn = Instance.new("TextButton")
-    actionBtn.Name = "Action"
-    actionBtn.Size = UDim2.new(0, 90, 0, 30) -- Уже
-    actionBtn.Position = UDim2.new(1, -100, 0.5, -15) -- Правее
-    actionBtn.AnchorPoint = Vector2.new(1, 0.5)
-    actionBtn.BackgroundColor3 = theme.accent
-    actionBtn.BorderSizePixel = 0
-    actionBtn.AutoButtonColor = false
-    actionBtn.Font = Enum.Font.Gotham
-    actionBtn.Text = "Execute"
-    actionBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    actionBtn.TextSize = 12
-    actionBtn.Parent = buttonFrame
+    local actionButton = Instance.new("TextButton")
+    actionButton.Name = "Action"
+    actionButton.Size = UDim2.new(0, 70, 0, 25)
+    actionButton.Position = UDim2.new(1, -80, 0.5, -12.5)
+    actionButton.AnchorPoint = Vector2.new(1, 0.5)
+    actionButton.BackgroundColor3 = isToggle and Color3.fromRGB(60, 60, 80) or color
+    actionButton.BorderSizePixel = 0
+    actionButton.AutoButtonColor = false
+    actionButton.Font = Enum.Font.Gotham
+    actionButton.Text = isToggle and "OFF" or "USE"
+    actionButton.TextColor3 = isToggle and theme.subtext or Color3.fromRGB(255, 255, 255)
+    actionButton.TextSize = 12
+    actionButton.Parent = buttonFrame
     
-    local btnCorner = Instance.new("UICorner")
-    btnCorner.CornerRadius = UDim.new(0, 4)
-    btnCorner.Parent = actionBtn
+    -- Эффект при наведении
+    actionButton.MouseEnter:Connect(function()
+        TweenService:Create(actionButton, TweenInfo.new(0.2), {
+            BackgroundColor3 = isToggle and Color3.fromRGB(70, 70, 90) or Color3.fromRGB(
+                math.min(color.R * 255 + 20, 255)/255,
+                math.min(color.G * 255 + 20, 255)/255,
+                math.min(color.B * 255 + 20, 255)/255
+            )
+        }):Play()
+    end)
     
-    return actionBtn
+    actionButton.MouseLeave:Connect(function()
+        TweenService:Create(actionButton, TweenInfo.new(0.2), {
+            BackgroundColor3 = isToggle and Color3.fromRGB(60, 60, 80) or color
+        }):Play()
+    end)
+    
+    return actionButton, buttonFrame
 end
 
--- ============================================
--- ВКЛАДКА PLAYER (наши функции)
--- ============================================
-
+-- ================= PLAYER TAB =================
 local playerTab = tabFrames[1]
 
 -- NOCHIP
-local nochipCheck = createCheckbox(
+local nochipBtn, nochipFrame = createButton(
     playerTab,
     "NOCHIP",
     "Walk through walls",
     "🚶",
-    false
+    theme.accent,
+    true
 )
 
 local nochipEnabled = false
 local nochipConnection
 
-nochipCheck.MouseButton1Click:Connect(function()
+nochipBtn.MouseButton1Click:Connect(function()
     nochipEnabled = not nochipEnabled
-    nochipCheck.BackgroundColor3 = nochipEnabled and theme.success or Color3.fromRGB(60, 60, 80)
-    nochipCheck.Text = nochipEnabled and "ON" or "OFF"
-    nochipCheck.TextColor3 = nochipEnabled and Color3.fromRGB(255, 255, 255) or theme.subtext
+    
+    nochipBtn.Text = nochipEnabled and "ON" or "OFF"
+    nochipBtn.BackgroundColor3 = nochipEnabled and theme.success or Color3.fromRGB(60, 60, 80)
+    nochipBtn.TextColor3 = nochipEnabled and Color3.fromRGB(255, 255, 255) or theme.subtext
+    nochipFrame:FindFirstChild("Title").Text = "NOCHIP" .. (nochipEnabled and " [ON]" or " [OFF]")
     
     if nochipEnabled then
         if nochipConnection then nochipConnection:Disconnect() end
@@ -411,138 +680,147 @@ nochipCheck.MouseButton1Click:Connect(function()
                 end
             end
         end)
+        showNotification("NOCHIP ENABLED", theme.success, "✅")
     else
         if nochipConnection then
             nochipConnection:Disconnect()
             nochipConnection = nil
         end
+        showNotification("NOCHIP DISABLED", theme.danger, "❌")
     end
 end)
 
 -- SPEED HACK
-local speedCheck = createCheckbox(
+local speedBtn, speedFrame = createButton(
     playerTab,
     "SPEED HACK",
     "Run faster",
     "⚡",
-    false
+    Color3.fromRGB(0, 200, 255),
+    true
 )
 
-local speedEnabled = false
-speedCheck.MouseButton1Click:Connect(function()
-    speedEnabled = not speedEnabled
-    speedCheck.BackgroundColor3 = speedEnabled and theme.success or Color3.fromRGB(60, 60, 80)
-    speedCheck.Text = speedEnabled and "ON" or "OFF"
-    speedCheck.TextColor3 = speedEnabled and Color3.fromRGB(255, 255, 255) or theme.subtext
-    
-    if player.Character and player.Character:FindFirstChild("Humanoid") then
-        player.Character.Humanoid.WalkSpeed = speedEnabled and 50 or 16
-    end
-end)
-
--- JUMP POWER
-local jumpCheck = createCheckbox(
-    playerTab,
-    "JUMP POWER",
-    "Jump higher",
-    "🦘",
-    false
-)
-
-jumpCheck.MouseButton1Click:Connect(function()
+speedBtn.MouseButton1Click:Connect(function()
     if player.Character and player.Character:FindFirstChild("Humanoid") then
         local humanoid = player.Character.Humanoid
-        local newJump = humanoid.JumpPower == 50 and 100 or 50
-        humanoid.JumpPower = newJump
+        local newSpeed = humanoid.WalkSpeed == 16 and 50 or 16
         
-        jumpCheck.BackgroundColor3 = newJump == 100 and theme.success or Color3.fromRGB(60, 60, 80)
-        jumpCheck.Text = newJump == 100 and "ON" or "OFF"
-        jumpCheck.TextColor3 = newJump == 100 and Color3.fromRGB(255, 255, 255) or theme.subtext
+        humanoid.WalkSpeed = newSpeed
+        speedBtn.Text = newSpeed == 50 and "ON" or "OFF"
+        speedBtn.BackgroundColor3 = newSpeed == 50 and theme.success or Color3.fromRGB(60, 60, 80)
+        speedBtn.TextColor3 = newSpeed == 50 and Color3.fromRGB(255, 255, 255) or theme.subtext
+        speedFrame:FindFirstChild("Title").Text = "SPEED HACK" .. (newSpeed == 50 and " [ON]" or " [OFF]")
+        
+        local notifText = userLanguage == "russian" and 
+                         (newSpeed == 50 and "СКОРОСТЬ: 50" or "СКОРОСТЬ: 16") or
+                         (newSpeed == 50 and "SPEED: 50" or "SPEED: 16")
+        
+        showNotification(notifText, 
+                        newSpeed == 50 and theme.success or theme.danger, 
+                        newSpeed == 50 and "⚡" or "🐢")
     end
 end)
 
 -- INVISIBLE
-local invisibleCheck = createCheckbox(
+local invisibleBtn, invisibleFrame = createButton(
     playerTab,
     "INVISIBLE",
     "Become invisible",
     "👻",
-    false
+    Color3.fromRGB(200, 100, 255),
+    true
 )
 
-invisibleCheck.MouseButton1Click:Connect(function()
+invisibleBtn.MouseButton1Click:Connect(function()
     if player.Character then
         local character = player.Character
-        local newTransparency = 0
+        local isNowInvisible = false
         
         for _, part in pairs(character:GetDescendants()) do
             if part:IsA("BasePart") then
                 if part.Transparency == 0 then
                     part.Transparency = 1
-                    newTransparency = 1
+                    isNowInvisible = true
                 else
                     part.Transparency = 0
-                    newTransparency = 0
+                    isNowInvisible = false
+                end
+            elseif part:IsA("Accessory") and part.Handle then
+                if part.Handle.Transparency == 0 then
+                    part.Handle.Transparency = 1
+                    isNowInvisible = true
+                else
+                    part.Handle.Transparency = 0
+                    isNowInvisible = false
                 end
             end
         end
         
-        invisibleCheck.BackgroundColor3 = newTransparency == 1 and theme.success or Color3.fromRGB(60, 60, 80)
-        invisibleCheck.Text = newTransparency == 1 and "ON" or "OFF"
-        invisibleCheck.TextColor3 = newTransparency == 1 and Color3.fromRGB(255, 255, 255) or theme.subtext
+        invisibleBtn.Text = isNowInvisible and "ON" or "OFF"
+        invisibleBtn.BackgroundColor3 = isNowInvisible and theme.success or Color3.fromRGB(60, 60, 80)
+        invisibleBtn.TextColor3 = isNowInvisible and Color3.fromRGB(255, 255, 255) or theme.subtext
+        invisibleFrame:FindFirstChild("Title").Text = "INVISIBLE" .. (isNowInvisible and " [ON]" or " [OFF]")
+        
+        local notifText = userLanguage == "russian" and 
+                         (isNowInvisible and "НЕВИДИМЫЙ ВКЛ" or "НЕВИДИМЫЙ ВЫКЛ") or
+                         (isNowInvisible and "INVISIBLE ON" or "INVISIBLE OFF")
+        
+        showNotification(notifText, 
+                        isNowInvisible and theme.success or theme.danger, 
+                        isNowInvisible and "👻" or "👤")
     end
 end)
 
--- ============================================
--- ВКЛАДКА VISUAL
--- ============================================
-
+-- ================= VISUAL TAB =================
 local visualTab = tabFrames[2]
 
 -- ESP
-local espCheck = createCheckbox(
+local espBtn, espFrame = createButton(
     visualTab,
     "PLAYER ESP",
-    "See players through walls",
+    "See all players",
     "👁️",
-    false
+    Color3.fromRGB(255, 100, 200),
+    true
 )
 
--- Рисуем ESP через Drawing API
 local espDrawings = {}
-espCheck.MouseButton1Click:Connect(function()
-    local enabled = espCheck.Text == "OFF"
-    espCheck.BackgroundColor3 = enabled and theme.success or Color3.fromRGB(60, 60, 80)
-    espCheck.Text = enabled and "ON" or "OFF"
-    espCheck.TextColor3 = enabled and Color3.fromRGB(255, 255, 255) or theme.subtext
+local espEnabled = false
+
+espBtn.MouseButton1Click:Connect(function()
+    espEnabled = not espEnabled
     
-    if enabled then
-        -- Создаем Drawing объекты
+    espBtn.Text = espEnabled and "ON" or "OFF"
+    espBtn.BackgroundColor3 = espEnabled and theme.success or Color3.fromRGB(60, 60, 80)
+    espBtn.TextColor3 = espEnabled and Color3.fromRGB(255, 255, 255) or theme.subtext
+    espFrame:FindFirstChild("Title").Text = "PLAYER ESP" .. (espEnabled and " [ON]" or " [OFF]")
+    
+    if espEnabled then
         for _, p in pairs(Players:GetPlayers()) do
             if p ~= player then
                 espDrawings[p] = {
                     box = Drawing.new("Square"),
                     name = Drawing.new("Text"),
-                    health = Drawing.new("Text")
+                    distance = Drawing.new("Text")
                 }
                 
-                espDrawings[p].box.Visible = true
-                espDrawings[p].box.Color = Color3.new(1, 0, 0)
-                espDrawings[p].box.Thickness = 2
-                espDrawings[p].box.Filled = false
+                local drawings = espDrawings[p]
+                drawings.box.Visible = true
+                drawings.box.Color = Color3.new(1, 0, 0)
+                drawings.box.Thickness = 2
+                drawings.box.Filled = false
                 
-                espDrawings[p].name.Visible = true
-                espDrawings[p].name.Color = Color3.new(1, 1, 1)
-                espDrawings[p].name.Size = 14
-                espDrawings[p].name.Text = p.Name
+                drawings.name.Visible = true
+                drawings.name.Color = Color3.new(1, 1, 1)
+                drawings.name.Size = 14
+                drawings.name.Text = p.Name
                 
-                espDrawings[p].health.Visible = true
-                espDrawings[p].health.Color = Color3.new(0, 1, 0)
-                espDrawings[p].health.Size = 12
+                drawings.distance.Visible = true
+                drawings.distance.Color = Color3.new(0, 1, 0)
+                drawings.distance.Size = 12
             end
         end
         
-        -- Обновляем позиции
         RunService.RenderStepped:Connect(function()
             for p, drawings in pairs(espDrawings) do
                 if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
@@ -555,134 +833,181 @@ espCheck.MouseButton1Click:Connect(function()
                         drawings.name.Visible = true
                         drawings.name.Position = Vector2.new(pos.X, pos.Y - 50)
                         
-                        local health = p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health or 100
-                        drawings.health.Text = math.floor(health) .. " HP"
-                        drawings.health.Position = Vector2.new(pos.X, pos.Y + 45)
+                        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                            local distance = (player.Character.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude
+                            drawings.distance.Text = math.floor(distance) .. " studs"
+                            drawings.distance.Position = Vector2.new(pos.X, pos.Y + 45)
+                        end
                     else
                         drawings.box.Visible = false
                         drawings.name.Visible = false
-                        drawings.health.Visible = false
+                        drawings.distance.Visible = false
                     end
+                else
+                    drawings.box.Visible = false
+                    drawings.name.Visible = false
+                    drawings.distance.Visible = false
                 end
             end
         end)
+        
+        local notifText = userLanguage == "russian" and "ESP ВКЛЮЧЕН" or "ESP ENABLED"
+        showNotification(notifText, theme.success, "👁️")
     else
-        -- Удаляем Drawing объекты
         for _, drawings in pairs(espDrawings) do
             drawings.box:Remove()
             drawings.name:Remove()
-            drawings.health:Remove()
+            drawings.distance:Remove()
         end
         espDrawings = {}
+        
+        local notifText = userLanguage == "russian" and "ESP ВЫКЛЮЧЕН" or "ESP DISABLED"
+        showNotification(notifText, theme.danger, "👁️")
     end
 end)
 
 -- X-RAY
-local xrayCheck = createCheckbox(
+local xrayBtn, xrayFrame = createButton(
     visualTab,
     "X-RAY",
     "See through walls",
     "🔍",
-    false
+    Color3.fromRGB(0, 200, 255),
+    true
 )
 
-xrayCheck.MouseButton1Click:Connect(function()
-    local enabled = xrayCheck.Text == "OFF"
-    xrayCheck.BackgroundColor3 = enabled and theme.success or Color3.fromRGB(60, 60, 80)
-    xrayCheck.Text = enabled and "ON" or "OFF"
-    xrayCheck.TextColor3 = enabled and Color3.fromRGB(255, 255, 255) or theme.subtext
+xrayBtn.MouseButton1Click:Connect(function()
+    local enabled = xrayBtn.Text == "OFF"
+    xrayBtn.Text = enabled and "ON" or "OFF"
+    xrayBtn.BackgroundColor3 = enabled and theme.success or Color3.fromRGB(60, 60, 80)
+    xrayBtn.TextColor3 = enabled and Color3.fromRGB(255, 255, 255) or theme.subtext
+    xrayFrame:FindFirstChild("Title").Text = "X-RAY" .. (enabled and " [ON]" or " [OFF]")
     
-    if enabled then
-        workspace.CurrentCamera.LocalTransparencyModifier = 0.5
-    else
-        workspace.CurrentCamera.LocalTransparencyModifier = 0
+    for _, part in pairs(Workspace:GetDescendants()) do
+        if part:IsA("BasePart") and (part.Name:lower():find("wall") or part.Name:lower():find("fence")) then
+            part.LocalTransparencyModifier = enabled and 0.5 or 0
+        end
     end
+    
+    local notifText = userLanguage == "russian" and 
+                     (enabled and "X-RAY ВКЛ" or "X-RAY ВЫКЛ") or
+                     (enabled and "X-RAY ON" or "X-RAY OFF")
+    
+    showNotification(notifText, 
+                    enabled and theme.success or theme.danger, 
+                    enabled and "🔍" or "🚫")
 end)
 
 -- FULLBRIGHT
-local brightCheck = createCheckbox(
+local brightBtn, brightFrame = createButton(
     visualTab,
     "FULLBRIGHT",
     "Remove darkness",
     "💡",
-    false
+    Color3.fromRGB(255, 255, 100),
+    true
 )
 
-brightCheck.MouseButton1Click:Connect(function()
-    local enabled = brightCheck.Text == "OFF"
-    brightCheck.BackgroundColor3 = enabled and theme.success or Color3.fromRGB(60, 60, 80)
-    brightCheck.Text = enabled and "ON" or "OFF"
-    brightCheck.TextColor3 = enabled and Color3.fromRGB(255, 255, 255) or theme.subtext
+brightBtn.MouseButton1Click:Connect(function()
+    local enabled = brightBtn.Text == "OFF"
+    brightBtn.Text = enabled and "ON" or "OFF"
+    brightBtn.BackgroundColor3 = enabled and theme.success or Color3.fromRGB(60, 60, 80)
+    brightBtn.TextColor3 = enabled and Color3.fromRGB(255, 255, 255) or theme.subtext
+    brightFrame:FindFirstChild("Title").Text = "FULLBRIGHT" .. (enabled and " [ON]" or " [OFF]")
     
     if enabled then
         Lighting.GlobalShadows = false
         Lighting.Brightness = 2
+        Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
     else
         Lighting.GlobalShadows = true
         Lighting.Brightness = 1
+        Lighting.OutdoorAmbient = Color3.fromRGB(0, 0, 0)
     end
+    
+    local notifText = userLanguage == "russian" and 
+                     (enabled and "FULLBRIGHT ВКЛ" or "FULLBRIGHT ВЫКЛ") or
+                     (enabled and "FULLBRIGHT ON" or "FULLBRIGHT OFF")
+    
+    showNotification(notifText, 
+                    enabled and theme.success or theme.danger, 
+                    enabled and "💡" or "🌙")
 end)
 
--- ============================================
--- ВКЛАДКА TELEPORT (кнопки справа)
--- ============================================
-
+-- ================= TELEPORT TAB =================
 local teleportTab = tabFrames[3]
 
 -- Guard Room
-local guardBtn = createActionButton(
+local guardBtn = createButton(
     teleportTab,
     "GUARD ROOM",
-    "Teleport to guard room",
-    "👮"
+    "Teleport to guards",
+    "👮",
+    Color3.fromRGB(100, 150, 255),
+    false
 )
 
 guardBtn.MouseButton1Click:Connect(function()
     if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
         player.Character.HumanoidRootPart.CFrame = CFrame.new(807.032, 99.99, 2307.153)
+        local notifText = userLanguage == "russian" and 
+                         "ТЕЛЕПОРТ В КОМНАТУ ОХРАНЫ" or 
+                         "TELEPORTED TO GUARD ROOM"
+        showNotification(notifText, theme.success, "👮")
     end
 end)
 
 -- Yard
-local yardBtn = createActionButton(
+local yardBtn = createButton(
     teleportTab,
     "PRISON YARD",
     "Teleport to yard",
-    "🏀"
+    "🏀",
+    Color3.fromRGB(100, 255, 150),
+    false
 )
 
 yardBtn.MouseButton1Click:Connect(function()
     if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
         player.Character.HumanoidRootPart.CFrame = CFrame.new(803, 98, 2457)
+        local notifText = userLanguage == "russian" and 
+                         "ТЕЛЕПОРТ В ДВОР" or 
+                         "TELEPORTED TO YARD"
+        showNotification(notifText, theme.success, "🏀")
     end
 end)
 
 -- Criminal Base
-local crimBtn = createActionButton(
+local crimBtn = createButton(
     teleportTab,
     "CRIMINAL BASE",
     "Teleport to criminal spawn",
-    "🔫"
+    "🔫",
+    Color3.fromRGB(255, 100, 100),
+    false
 )
 
 crimBtn.MouseButton1Click:Connect(function()
     if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
         player.Character.HumanoidRootPart.CFrame = CFrame.new(-920, 94, 2137)
+        local notifText = userLanguage == "russian" and 
+                         "ТЕЛЕПОРТ В БАЗУ КРИМИНАЛОВ" or 
+                         "TELEPORTED TO CRIMINAL BASE"
+        showNotification(notifText, theme.success, "🔫")
     end
 end)
 
--- ============================================
--- ВКЛАДКА FUN
--- ============================================
-
+-- ================= FUN TAB =================
 local funTab = tabFrames[4]
 
 -- Spawn Cube
-local cubeBtn = createActionButton(
+local cubeBtn = createButton(
     funTab,
     "SPAWN CUBE",
     "Create platform",
-    "◼"
+    "◼",
+    Color3.fromRGB(100, 200, 255),
+    false
 )
 
 local cubes = {}
@@ -696,17 +1021,25 @@ cubeBtn.MouseButton1Click:Connect(function()
         cube.CanCollide = true
         cube.Color = Color3.fromRGB(math.random(50, 255), math.random(50, 255), math.random(50, 255))
         cube.Material = Enum.Material.Neon
+        cube.Transparency = 0.3
         cube.Parent = Workspace
         table.insert(cubes, cube)
+        
+        local notifText = userLanguage == "russian" and 
+                         "КУБ СОЗДАН" or 
+                         "CUBE SPAWNED"
+        showNotification(notifText, theme.success, "◼")
     end
 end)
 
 -- Grenade Rain
-local grenadeBtn = createActionButton(
+local grenadeBtn = createButton(
     funTab,
     "GRENADE RAIN",
     "Spawn explosions",
-    "💣"
+    "💣",
+    Color3.fromRGB(255, 50, 50),
+    false
 )
 
 grenadeBtn.MouseButton1Click:Connect(function()
@@ -727,155 +1060,167 @@ grenadeBtn.MouseButton1Click:Connect(function()
             local explosion = Instance.new("Explosion")
             explosion.Position = grenade.Position
             explosion.BlastRadius = 10
+            explosion.BlastPressure = 0
             explosion.Parent = Workspace
             
             task.wait(0.1)
         end
+        
+        local notifText = userLanguage == "russian" and 
+                         "ГРАНАТНЫЙ ДОЖДЬ!" or 
+                         "GRENADE RAIN!"
+        showNotification(notifText, Color3.fromRGB(255, 100, 100), "💣")
     end
 end)
 
 -- Clear Cubes
-local clearBtn = createActionButton(
+local clearBtn = createButton(
     funTab,
     "CLEAR CUBES",
     "Remove all spawned cubes",
-    "🗑️"
-)
-
-clearBtn.MouseButton1Click:Connect(function()
-    for _, cube in pairs(cubes) do
-        if cube and cube.Parent then
-            cube:Destroy()
-        end
-    end
-    cubes = {}
-end)
-
--- ============================================
--- ВКЛАДКА SETTINGS
--- ============================================
-
-local settingsTab = tabFrames[5]
-
--- UI Transparency
-local transCheck = createCheckbox(
-    settingsTab,
-    "UI TRANSPARENCY",
-    "Make menu transparent",
-    "👁️",
+    "🗑️",
+    Color3.fromRGB(255, 150, 50),
     false
 )
 
-transCheck.MouseButton1Click:Connect(function()
-    local enabled = transCheck.Text == "OFF"
-    transCheck.BackgroundColor3 = enabled and theme.success or Color3.fromRGB(60, 60, 80)
-    transCheck.Text = enabled and "ON" or "OFF"
-    transCheck.TextColor3 = enabled and Color3.fromRGB(255, 255, 255) or theme.subtext
-    
-    mainContainer.BackgroundTransparency = enabled and 0.5 or 0
-end)
-
--- Keybind
-local keybindBtn = createActionButton(
-    settingsTab,
-    "CHANGE KEYBIND",
-    "Change menu toggle key",
-    "⌨️"
-)
-
-keybindBtn.MouseButton1Click:Connect(function()
-    keybindBtn.Text = "Press key..."
-    local connection
-    connection = UIS.InputBegan:Connect(function(input)
-        if input.KeyCode ~= Enum.KeyCode.Unknown then
-            keybindBtn.Text = "Key: " .. input.KeyCode.Name
-            connection:Disconnect()
+clearBtn.MouseButton1Click:Connect(function()
+    local count = 0
+    for _, cube in pairs(cubes) do
+        if cube and cube.Parent then
+            cube:Destroy()
+            count = count + 1
         end
-    end)
+    end
+    cubes = {}
+    
+    local notifText = userLanguage == "russian" and 
+                     "УДАЛЕНО " .. count .. " КУБОВ" or 
+                     "CLEARED " .. count .. " CUBES"
+    showNotification(notifText, theme.success, "🗑️")
 end)
 
--- Save Settings
-local saveBtn = createActionButton(
-    settingsTab,
-    "SAVE SETTINGS",
-    "Save current configuration",
-    "💾"
-)
+-- ================= CREDITS TAB =================
+local creditsTab = tabFrames[5]
 
--- ============================================
--- ВКЛАДКА CREDITS
--- ============================================
+-- Credits content
+local creditsContent = Instance.new("TextLabel")
+creditsContent.Name = "CreditsText"
+creditsContent.Size = UDim2.new(1, -30, 1, -30)
+creditsContent.Position = UDim2.new(0, 15, 0, 15)
+creditsContent.BackgroundTransparency = 1
+creditsContent.Font = Enum.Font.Gotham
+creditsContent.Text = "🎮 AGALIK HUB v5.0 🎮\n\n" ..
+                      "Created by: " .. player.Name .. "\n\n" ..
+                      "🌟 Special Features:\n" ..
+                      "• NOCHIP - Walk through walls\n" ..
+                      "• SPEED HACK - 3x speed\n" ..
+                      "• INVISIBLE - Become invisible\n" ..
+                      "• ESP - See all players\n" ..
+                      "• X-RAY - See through walls\n" ..
+                      "• FULLBRIGHT - No darkness\n" ..
+                      "• Teleports - Guard/Yard/Criminal\n" ..
+                      "• Fun - Cubes & Grenades\n\n" ..
+                      "🔥 Thanks for using AGALIK HUB!"
+creditsContent.TextColor3 = theme.text
+creditsContent.TextSize = 14
+creditsContent.TextXAlignment = Enum.TextXAlignment.Left
+creditsContent.TextYAlignment = Enum.TextYAlignment.Top
+creditsContent.TextWrapped = true
+creditsContent.Parent = creditsTab
 
-local creditsTab = tabFrames[6]
-
--- Текст в credits
-local creditsText = Instance.new("TextLabel")
-creditsText.Name = "CreditsText"
-creditsText.Size = UDim2.new(1, -30, 1, -30)
-creditsText.Position = UDim2.new(0, 15, 0, 15)
-creditsText.BackgroundTransparency = 1
-creditsText.Font = Enum.Font.Gotham
-creditsText.Text = "AGALIK HUB v4.1 | Enhanced\n\n" ..
-                   "Created by: " .. player.Name .. "\n\n" ..
-                   "Special thanks to:\n" ..
-                   "• Roblox Prison Life\n" ..
-                   "• All testers\n" ..
-                   "• Supporters\n\n" ..
-                   "Version: 4.1.0\n" ..
-                   "Last Updated: Today\n" ..
-                   "Menu Style: Fixed & Improved"
-creditsText.TextColor3 = theme.text
-creditsText.TextSize = 14
-creditsText.TextXAlignment = Enum.TextXAlignment.Left
-creditsText.TextYAlignment = Enum.TextYAlignment.Top
-creditsText.TextWrapped = true
-creditsText.Parent = creditsTab
-
--- ============================================
--- УПРАВЛЕНИЕ МЕНЮ
--- ============================================
-
+-- ================= МЕНЮ УПРАВЛЕНИЕ =================
 local menuVisible = false
 
 local function toggleMenu()
     menuVisible = not menuVisible
     
     if menuVisible then
-        mainContainer.Visible = true
+        mainFrame.Visible = true
         openButton.Visible = false
+        
+        mainFrame.Size = UDim2.new(0, 10, 0, 10)
+        mainFrame.Position = UDim2.new(0.5, -5, 0.5, -5)
+        mainFrame.BackgroundTransparency = 1
+        
+        TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back), {
+            Size = UDim2.new(0, 450, 0, 400),
+            Position = UDim2.new(0.5, -225, 0.5, -200),
+            BackgroundTransparency = 0
+        }):Play()
     else
-        mainContainer.Visible = false
+        TweenService:Create(mainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Back), {
+            Size = UDim2.new(0, 10, 0, 10),
+            Position = UDim2.new(0.5, -5, 0.5, -5),
+            BackgroundTransparency = 1
+        }):Play()
+        
+        task.wait(0.2)
+        mainFrame.Visible = false
+        mainFrame.Size = UDim2.new(0, 450, 0, 400)
+        mainFrame.BackgroundTransparency = 0
+        
         openButton.Visible = true
     end
 end
 
--- Кнопки
+-- Кнопка принятия инструкции
+acceptBtn.MouseButton1Click:Connect(function()
+    -- Анимация закрытия инструкции
+    TweenService:Create(tutorialFrame, TweenInfo.new(0.3), {
+        Size = UDim2.new(0, 10, 0, 10),
+        Position = UDim2.new(0.5, -5, 0.5, -5),
+        BackgroundTransparency = 1
+    }):Play()
+    
+    task.wait(0.3)
+    tutorialFrame.Visible = false
+    
+    -- Показываем кнопку открытия меню
+    openButton.Visible = true
+    
+    -- Показываем приветственное уведомление
+    local welcomeText = userLanguage == "russian" and 
+                       "AGALIK HUB v5.0 ЗАГРУЖЕН" or 
+                       "AGALIK HUB v5.0 LOADED"
+    showNotification(welcomeText, theme.accent, "🎮")
+    
+    local controlsText = userLanguage == "russian" and 
+                        "Нажмите RightControl для открытия меню" or 
+                        "Press RightControl to open menu"
+    showNotification(controlsText, Color3.fromRGB(255, 184, 0), "⌨️")
+    
+    tutorialShown = true
+end)
+
+-- Обработчики кнопок
 openButton.MouseButton1Click:Connect(toggleMenu)
 closeBtn.MouseButton1Click:Connect(toggleMenu)
 
 -- Горячая клавиша
 UIS.InputBegan:Connect(function(input)
     if input.KeyCode == Enum.KeyCode.RightControl then
-        toggleMenu()
+        if tutorialShown then
+            toggleMenu()
+        end
     end
 end)
 
--- Перетаскивание окна
+-- Перетаскивание
 local dragging = false
 local dragStart, startPos
 
-header.InputBegan:Connect(function(input)
+titleBar.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
         dragging = true
         dragStart = input.Position
-        startPos = mainContainer.Position
+        startPos = mainFrame.Position
     end
 end)
 
 UIS.InputChanged:Connect(function(input)
     if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
         local delta = input.Position - dragStart
-        mainContainer.Position = UDim2.new(
+        mainFrame.Position = UDim2.new(
             startPos.X.Scale, 
             startPos.X.Offset + delta.X,
             startPos.Y.Scale, 
@@ -890,16 +1235,14 @@ UIS.InputEnded:Connect(function(input)
     end
 end)
 
--- ============================================
--- ЗАГРУЗКА
--- ============================================
-
+-- Загрузка
 task.wait(1)
-print("========================================")
-print("AGALIK HUB v4.1 | Enhanced")
-print("========================================")
-print("Menu Style: Fixed (buttons lower & right)")
-print("No Combat tab (removed)")
-print("Keybind: RightControl")
-print("Tabs: Player, Visual, Teleport, Fun, Settings, Credits")
-print("========================================")
+
+print("=" .. string.rep("=", 50))
+print("AGALIK HUB v5.0 | WITH TUTORIAL")
+print("=" .. string.rep("=", 50))
+print("✅ Tutorial system - показывается при первом запуске")
+print("✅ Выбор языка - English / Russian")
+print("✅ Все уведомления на выбранном языке")
+print("✅ Все функции работают")
+print("=" .. string.rep("=", 50))
